@@ -613,6 +613,7 @@ class GameClient {
     this.network.on('gameCreated', (data) => this.onGameState(data));
     this.network.on('gameStarted', (data) => this.onGameStarted(data));
     this.network.on('playerJoined', (data) => this.onPlayerJoined(data));
+    this.network.on('playerReconnected', (data) => this.onPlayerReconnected(data));
     this.network.on('playerReady', (data) => this.onPlayerReady(data));
     this.network.on('moved', (data) => this.onMoved(data));
     this.network.on('turnChanged', (data) => this.onTurnChanged(data));
@@ -666,6 +667,14 @@ class GameClient {
       this.updateRoomUI(data.state);
     }
     showToast(`${data.player?.name || '玩家'} 加入房间`, 'info');
+  }
+
+  onPlayerReconnected(data) {
+    if (data.state) {
+      this.gameState = data.state;
+      this.updateRoomUI(data.state);
+    }
+    showToast(`${data.name || '玩家'} 重新连接`, 'info');
   }
 
   onPlayerReady(data) {

@@ -61,6 +61,9 @@ export class GameRoom {
 
     this.ctx.acceptWebSocket(server, [playerId]);
 
+    const existingSockets = this.ctx.getWebSockets();
+    console.log(`[ws] New connection: playerId=${playerId} totalSockets=${existingSockets.length}`);
+
     // 发送初始状态
     const gs = await this.getGameState();
     if (gs) {
@@ -119,6 +122,18 @@ export class GameRoom {
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
           break;
+        case 'getState': {
+          const refreshGs = await this.getGameState();
+          if (refreshGs) {
+            const refreshTags = this.ctx.getTags(ws);
+            ws.send(JSON.stringify({
+              type: 'gameState',
+              state: this.sanitizeState(refreshGs),
+              yourId: refreshTags[0],
+            }));
+          }
+          break;
+        }
       }
     } catch (err) {
       ws.send(JSON.stringify({ type: 'error', message: err.message }));
@@ -128,6 +143,7 @@ export class GameRoom {
   async webSocketClose(ws, code, reason, wasClean) {
     const tags = this.ctx.getTags(ws);
     const playerId = tags[0];
+    console.log(`[ws] Close: playerId=${playerId} code=${code} reason=${reason}`);
     const gs = await this.getGameState();
     if (gs) {
       const player = gs.players.find(p => p.id === playerId);
@@ -286,6 +302,13 @@ export class GameRoom {
         existing.connected = true;
         await this.saveGameState(gs);
         this.sendTo(playerId, { type: 'gameState', state: this.sanitizeState(gs), yourId: playerId });
+        // 广播重连事件给所有玩家，确保其他客户端也能同步状态
+        this.broadcast({
+          type: 'playerReconnected',
+          playerId,
+          name: existing.name,
+          state: this.sanitizeState(gs),
+        });
         return;
       }
     }
@@ -791,16 +814,24 @@ export class GameRoom {
   broadcast(data) {
     const msg = JSON.stringify(data);
     const sockets = this.ctx.getWebSockets();
+    console.log(`[broadcast] type=${data.type} sockets=${sockets.length}`);
     for (const ws of sockets) {
-      try { ws.send(msg); } catch (e) { /* ignore closed sockets */ }
+      try {
+        ws.send(msg);
+      } catch (e) {
+        console.error(`[broadcast] send failed for type=${data.type}:`, e.message);
+      }
     }
   }
 
   sendTo(playerId, data) {
     const sockets = this.ctx.getWebSockets(playerId);
     const msg = JSON.stringify(data);
+    console.log(`[sendTo] playerId=${playerId} type=${data.type} sockets=${sockets.length}`);
     for (const ws of sockets) {
-      try { ws.send(msg); } catch (e) { /* ignore */ }
+      try { ws.send(msg); } catch (e) {
+        console.error(`[sendTo] send failed for ${playerId}:`, e.message);
+      }
     }
   }
 

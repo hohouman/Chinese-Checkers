@@ -281,6 +281,25 @@
     showScreen('room-screen');
   }
 
+  let stateRefreshInterval = null;
+
+  function startStateRefresh() {
+    stopStateRefresh();
+    // 在房间等待期间每 5 秒请求一次状态同步（作为 WebSocket 广播的后备机制）
+    stateRefreshInterval = setInterval(() => {
+      if (network.ws && network.ws.readyState === WebSocket.OPEN) {
+        network.send({ type: 'getState' });
+      }
+    }, 5000);
+  }
+
+  function stopStateRefresh() {
+    if (stateRefreshInterval) {
+      clearInterval(stateRefreshInterval);
+      stateRefreshInterval = null;
+    }
+  }
+
   function connectAndSetupRoom(rid) {
     // 初始化game client
     const canvas = document.getElementById('game-canvas');
@@ -299,6 +318,9 @@
     if (slotsEl) slotsEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px">⏳ 正在连接服务器...</div>';
 
     network.connect(rid, playerId, playerName);
+
+    // 启动房间状态定期刷新（作为广播的后备）
+    startStateRefresh();
   }
 
   function getGameConfig() {
@@ -324,6 +346,7 @@
 
   function setupRoomEvents() {
     document.getElementById('btn-leave-room').addEventListener('click', () => {
+      stopStateRefresh();
       network.disconnect();
       showScreen('lobby-screen');
     });
@@ -379,12 +402,16 @@
   // ==================== 游戏界面事件 ====================
 
   function setupGameEvents() {
+    // 游戏开始时停止房间状态轮询
+    network.on('gameStarted', () => stopStateRefresh());
+
     document.getElementById('btn-end-turn').addEventListener('click', () => {
       network.send({ type: 'endTurn' });
     });
 
     document.getElementById('btn-surrender').addEventListener('click', () => {
       if (confirm('确定要投降吗？')) {
+        stopStateRefresh();
         network.disconnect();
         showScreen('lobby-screen');
         showToast('你已退出游戏', 'info');
@@ -395,6 +422,7 @@
       document.getElementById('game-over-modal').classList.add('hidden');
       document.getElementById('btn-float-back').classList.add('hidden');
       game.renderer.stopRenderLoop();
+      stopStateRefresh();
       network.disconnect();
       showScreen('lobby-screen');
       // 刷新积分和排行榜
@@ -410,6 +438,7 @@
     document.getElementById('btn-float-back').addEventListener('click', () => {
       document.getElementById('btn-float-back').classList.add('hidden');
       game.renderer.stopRenderLoop();
+      stopStateRefresh();
       network.disconnect();
       showScreen('lobby-screen');
       // 刷新积分和排行榜
