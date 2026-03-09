@@ -106,28 +106,36 @@ async function handleCreatePlayer(request, env) {
     console.error('DB error:', e);
   }
 
-  // 存入 KV 作为快速会话
-  await env.SESSIONS.put(`player:${id}`, JSON.stringify({ id, name, createdAt: Date.now() }), {
+  // 存入 KV 作为快速会话（包含默认 rating）
+  await env.SESSIONS.put(`player:${id}`, JSON.stringify({ id, name, rating: 1000, games_played: 0, games_won: 0, createdAt: Date.now() }), {
     expirationTtl: 86400 * 30,
   });
 
-  return Response.json({ id, name });
+  return Response.json({ id, name, rating: 1000 });
 }
 
 async function handleGetPlayer(playerId, env) {
   if (!playerId) return Response.json({ error: '缺少ID' }, { status: 400 });
 
-  // 先查 KV
+  // 优先从 DB 获取最新数据（rating 源）
+  try {
+    const row = await env.DB.prepare(
+      'SELECT * FROM players WHERE id = ?'
+    ).bind(playerId).first();
+    if (row) return Response.json(row);
+  } catch (e) { /* DB 不可用时 fallback KV */ }
+
+  // DB 查不到或失败，尝试 KV
   const cached = await env.SESSIONS.get(`player:${playerId}`, 'json');
   if (cached) {
-    // 从DB补充完整数据
-    try {
-      const row = await env.DB.prepare(
-        'SELECT * FROM players WHERE id = ?'
-      ).bind(playerId).first();
-      if (row) return Response.json(row);
-    } catch (e) { /* ignore */ }
-    return Response.json(cached);
+    // 确保返回的数据始终包含 rating
+    return Response.json({
+      id: cached.id,
+      name: cached.name,
+      rating: cached.rating ?? 1000,
+      games_played: cached.games_played ?? 0,
+      games_won: cached.games_won ?? 0,
+    });
   }
 
   return Response.json({ error: '玩家不存在' }, { status: 404 });

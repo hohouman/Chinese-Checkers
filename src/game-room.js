@@ -833,6 +833,18 @@ export class GameRoom {
            last_seen = datetime('now')
            WHERE id = ?`
         ).bind(result, ratingChange, player.id).run();
+
+        // 同步更新 KV 缓存中的 rating
+        try {
+          const updatedRow = await db.prepare(
+            'SELECT id, name, rating, games_played, games_won FROM players WHERE id = ?'
+          ).bind(player.id).first();
+          if (updatedRow && this.env.SESSIONS) {
+            await this.env.SESSIONS.put(`player:${player.id}`, JSON.stringify({
+              ...updatedRow, createdAt: Date.now()
+            }), { expirationTtl: 86400 * 30 });
+          }
+        } catch (kvErr) { /* KV sync failure is non-critical */ }
       }
     } catch (e) {
       console.error('Failed to save game result:', e);
