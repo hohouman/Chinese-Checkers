@@ -595,14 +595,49 @@ class GameClient {
     const event = data.event;
     if (!event) return;
 
-    showEventPopup(event.icon || '⚡', event.name || '随机事件');
+    // 构建效果详情文本
+    const detail = this.buildEventDetail(event);
+    showEventPopup(event.icon || '⚡', event.name || '随机事件', event.description || '', detail, event.type);
     addEventLog(`[回合${data.turn}] ${event.icon || ''} ${event.name}: ${event.description}`);
 
-    if (data.state) {
+    // 刷新棋盘（延迟以让弹窗先展示）
+    if (this.gameState?.board && event.changes) {
+      // 在前端立即应用地形变更
+      for (const ch of event.changes) {
+        if (ch.type === 'terrainChange' && this.gameState.board[ch.key]) {
+          this.gameState.board[ch.key].terrain = ch.terrain;
+        }
+      }
       setTimeout(() => {
         this.updateGameUI(this.gameState);
-      }, 1000);
+      }, 600);
     }
+  }
+
+  /**
+   * 根据随机事件的 changes 构建中文效果摘要
+   */
+  buildEventDetail(event) {
+    const changes = event.changes;
+    if (!changes || changes.length === 0) return '';
+    const parts = [];
+    const terrainMap = { obstacle: '障碍物', speed: '加速带', teleporter: '传送阵', ice: '冰面', normal: '普通' };
+    let terrainChanges = 0, heals = 0, displaced = 0, eliminated = 0;
+    for (const ch of changes) {
+      if (ch.type === 'terrainChange') terrainChanges++;
+      if (ch.type === 'heal') heals++;
+      if (ch.type === 'displaced') displaced++;
+      if (ch.type === 'eliminated') eliminated++;
+    }
+    if (terrainChanges > 0) {
+      const first = changes.find(c => c.type === 'terrainChange');
+      const tn = terrainMap[first?.terrain] || first?.terrain;
+      parts.push(`${terrainChanges} 格变为${tn}`);
+    }
+    if (heals > 0) parts.push(`${heals} 个棋子恢复HP`);
+    if (displaced > 0) parts.push(`${displaced} 个棋子被挤开`);
+    if (eliminated > 0) parts.push(`${eliminated} 个棋子被消灭`);
+    return parts.join('，');
   }
 
   onScoresUpdated(data) {
@@ -812,13 +847,31 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.remove(), 3000);
 }
 
-function showEventPopup(icon, text) {
+function showEventPopup(icon, title, desc = '', detail = '', eventType = '') {
   const popup = document.getElementById('event-popup');
   if (!popup) return;
   document.getElementById('event-popup-icon').textContent = icon;
-  document.getElementById('event-popup-text').textContent = text;
+  document.getElementById('event-popup-text').textContent = title;
+  const descEl = document.getElementById('event-popup-desc');
+  const detailEl = document.getElementById('event-popup-detail');
+  if (descEl) descEl.textContent = desc;
+  if (detailEl) {
+    detailEl.textContent = detail;
+    detailEl.style.display = detail ? 'block' : 'none';
+  }
+  // 按事件类型设置颜色主题
+  const content = popup.querySelector('.event-popup-content');
+  if (content) {
+    content.className = 'event-popup-content';
+    if (eventType) content.classList.add('event-type-' + eventType);
+    // 重新触发动画
+    content.style.animation = 'none';
+    content.offsetHeight; // reflow
+    content.style.animation = '';
+  }
   popup.classList.remove('hidden');
-  setTimeout(() => popup.classList.add('hidden'), 3000);
+  clearTimeout(showEventPopup._timer);
+  showEventPopup._timer = setTimeout(() => popup.classList.add('hidden'), 4000);
 }
 
 function addEventLog(text) {
