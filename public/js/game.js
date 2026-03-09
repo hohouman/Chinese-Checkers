@@ -55,7 +55,11 @@ class GameClient {
     this.network = network;
     this.playerId = playerId;
 
-    this.setupCanvasEvents(canvas);
+    // 防止重复绑定 Canvas 事件
+    if (!this._canvasInitialized) {
+      this._canvasInitialized = true;
+      this.setupCanvasEvents(canvas);
+    }
     this.populateLegends();
   }
 
@@ -603,7 +607,7 @@ class GameClient {
       }
       return `<div class="player-slot">
         <div class="slot-color" style="background:${colors[idx]?.color || '#888'}"></div>
-        <div class="slot-name" style="color:var(--text-dim)">空位</div>
+        <div class="slot-name" style="color:var(--text-dim)">等待加入...</div>
         <div class="slot-status">${colors[idx]?.name || ''}</div>
       </div>`;
     }).join('');

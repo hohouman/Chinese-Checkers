@@ -41,6 +41,14 @@ class NetworkClient {
   connect(roomId, playerId, playerName) {
     this.roomId = roomId;
     this.playerId = playerId;
+    this.maxReconnectAttempts = 5; // 重置重连次数（disconnect时被设为0）
+
+    // 关闭已有连接
+    if (this.ws) {
+      try { this.ws.close(); } catch (e) { /* ignore */ }
+      this.ws = null;
+    }
+    this.stopPing();
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${protocol}//${location.host}/api/rooms/${roomId}/ws?playerId=${playerId}&name=${encodeURIComponent(playerName)}`;

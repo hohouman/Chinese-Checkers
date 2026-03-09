@@ -240,12 +240,24 @@
     showScreen('room-screen');
   }
 
-  function connectAndSetupRoom(roomId) {
+  function connectAndSetupRoom(rid) {
     // 初始化game client
     const canvas = document.getElementById('game-canvas');
     game.init(canvas, network, playerId);
 
-    network.connect(roomId, playerId, playerName);
+    // 立即显示房间基础信息（不等WebSocket）
+    document.getElementById('room-id-display').textContent = rid || '';
+    document.getElementById('room-mode-display').textContent = {
+      classic: '🏁 经典模式',
+      points: '💎 积分模式',
+      survival: '⚔️ 生存模式',
+    }[selectedMode] || selectedMode;
+    document.getElementById('room-count-display').textContent = `0/${selectedPlayerCount}人`;
+    // 显示等待提示
+    const slotsEl = document.getElementById('player-slots');
+    if (slotsEl) slotsEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px">⏳ 正在连接服务器...</div>';
+
+    network.connect(rid, playerId, playerName);
   }
 
   function getGameConfig() {
