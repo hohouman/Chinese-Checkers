@@ -874,9 +874,11 @@ class GameClient {
       ];
 
       if (player) {
+        const aiLevelNames = { easy: '简单', medium: '中等', hard: '困难' };
+        const aiTag = player.isAI ? `🤖 <span style="font-size:11px;color:var(--text-dim)">${aiLevelNames[player.aiLevel] || '中等'}</span>` : '';
         return `<div class="player-slot occupied ${player.ready ? 'ready' : ''}">
           <div class="slot-color" style="background:${colors[idx]?.color || '#888'}"></div>
-          <div class="slot-name">${player.name} ${player.isAI ? '🤖' : ''}</div>
+          <div class="slot-name">${player.name} ${aiTag}</div>
           <div class="slot-status">${player.ready ? '✓ 已准备' : '等待准备...'}</div>
         </div>`;
       }
