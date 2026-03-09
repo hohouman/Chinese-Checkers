@@ -40,6 +40,10 @@ class GameClient {
    * 初始化游戏
    */
   init(canvas, network, playerId) {
+    // 先设置引用，确保 setupNetworkEvents 可以访问 this.network
+    this.network = network;
+    this.playerId = playerId;
+
     // 防止重复初始化时注册多个事件监听
     if (this.renderer) {
       this.renderer.destroy();
@@ -52,8 +56,6 @@ class GameClient {
     }
 
     this.renderer = new BoardRenderer(canvas);
-    this.network = network;
-    this.playerId = playerId;
 
     // 防止重复绑定 Canvas 事件
     if (!this._canvasInitialized) {
