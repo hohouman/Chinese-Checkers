@@ -133,11 +133,13 @@ class NetworkClient {
 
   // ==================== API 调用 ====================
 
-  static async createPlayer(name) {
+  static async createPlayer(name, existingId) {
+    const body = { name };
+    if (existingId) body.id = existingId;
     const res = await fetch('/api/player', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(body),
     });
     return res.json();
   }

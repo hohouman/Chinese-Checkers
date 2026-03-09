@@ -91,22 +91,50 @@ export default {
 // ==================== 处理函数 ====================
 
 async function handleCreatePlayer(request, env) {
-  const { name } = await request.json();
+  const { name, id: existingId } = await request.json();
   if (!name || name.length > 20) {
     return Response.json({ error: '名称无效' }, { status: 400 });
   }
 
+  // 已有 ID → 更新名字，保留积分
+  if (existingId) {
+    try {
+      const row = await env.DB.prepare(
+        'SELECT * FROM players WHERE id = ?'
+      ).bind(existingId).first();
+      if (row) {
+        await env.DB.prepare(
+          'UPDATE players SET name = ?, last_seen = datetime(\'now\') WHERE id = ?'
+        ).bind(name, existingId).run();
+        // 更新 KV
+        await env.SESSIONS.put(`player:${existingId}`, JSON.stringify({
+          id: existingId, name, rating: row.rating, games_played: row.games_played,
+          games_won: row.games_won, createdAt: Date.now(),
+        }), { expirationTtl: 86400 * 30 });
+        return Response.json({ id: existingId, name, rating: row.rating });
+      }
+    } catch (e) {
+      console.error('DB update error:', e);
+    }
+    // DB 中找不到 → 尝试 KV
+    const cached = await env.SESSIONS.get(`player:${existingId}`, 'json');
+    if (cached) {
+      cached.name = name;
+      await env.SESSIONS.put(`player:${existingId}`, JSON.stringify(cached), { expirationTtl: 86400 * 30 });
+      return Response.json({ id: existingId, name, rating: cached.rating ?? 1000 });
+    }
+  }
+
+  // 新玩家
   const id = crypto.randomUUID();
   try {
     await env.DB.prepare(
       'INSERT INTO players (id, name) VALUES (?, ?)'
     ).bind(id, name).run();
   } catch (e) {
-    // DB不可用时仍可玩
     console.error('DB error:', e);
   }
 
-  // 存入 KV 作为快速会话（包含默认 rating）
   await env.SESSIONS.put(`player:${id}`, JSON.stringify({ id, name, rating: 1000, games_played: 0, games_won: 0, createdAt: Date.now() }), {
     expirationTtl: 86400 * 30,
   });

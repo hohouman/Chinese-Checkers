@@ -104,7 +104,9 @@
     localStorage.setItem('playerName', name);
 
     try {
-      const result = await NetworkClient.createPlayer(name);
+      // 已有 ID 时只更新名字，不创建新玩家
+      const body = playerId ? { name, id: playerId } : { name };
+      const result = await NetworkClient.createPlayer(body.name, body.id);
       if (result.id) {
         playerId = result.id;
         localStorage.setItem('playerId', playerId);
