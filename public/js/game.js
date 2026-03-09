@@ -27,12 +27,12 @@ class GameClient {
     };
 
     this.terrainTypes = {
-      normal: { name: '普通', color: '#2a2a3e' },
-      teleporter: { name: '传送阵', color: '#6c3483' },
-      obstacle: { name: '障碍物', color: '#4a4a5e' },
-      speed: { name: '加速带', color: '#7d6608' },
-      ice: { name: '冰面', color: '#1a5276' },
-      collapse: { name: '塌陷区', color: '#7e5109' },
+      normal:     { name: '普通',   color: '#2a2a3e', border: '#3a3a52', desc: '无特殊效果' },
+      teleporter: { name: '传送阵', color: '#6c3483', border: '#a569bd', desc: '传送至配对位置' },
+      obstacle:   { name: '障碍物', color: '#4a4a5e', border: '#6a6a7e', desc: '阻挡移动路径' },
+      speed:      { name: '加速带', color: '#7d6608', border: '#f1c40f', desc: '移动后额外一步' },
+      ice:        { name: '冰面',   color: '#1a5276', border: '#5dade2', desc: '滑行无法停留' },
+      collapse:   { name: '塌陷区', color: '#7e5109', border: '#e67e22', desc: '踩后塌陷消失' },
     };
   }
 
@@ -81,12 +81,115 @@ class GameClient {
 
     const terrainLegend = document.getElementById('terrain-legend');
     if (terrainLegend) {
-      terrainLegend.innerHTML = Object.entries(this.terrainTypes).map(([type, info]) =>
-        `<div class="legend-item">
-          <span class="legend-swatch" style="background:${info.color}"></span>
-          <span>${info.name}</span>
-        </div>`
-      ).join('');
+      terrainLegend.innerHTML = '';
+      for (const [type, info] of Object.entries(this.terrainTypes)) {
+        const item = document.createElement('div');
+        item.className = 'legend-item terrain-legend-item';
+
+        // 用 mini canvas 绘制地形六边形预览
+        const cvs = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const displaySize = 34;
+        cvs.width = displaySize * dpr;
+        cvs.height = displaySize * dpr;
+        cvs.style.width = displaySize + 'px';
+        cvs.style.height = displaySize + 'px';
+        cvs.className = 'terrain-preview';
+        const ctx = cvs.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const cx = displaySize / 2, cy = displaySize / 2, hexR = 14;
+
+        // 绘制六边形
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const angle = Math.PI / 180 * (60 * i - 30);
+          const hx = cx + hexR * Math.cos(angle);
+          const hy = cy + hexR * Math.sin(angle);
+          if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.fillStyle = info.color;
+        ctx.fill();
+        ctx.strokeStyle = info.border;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 绘制地形特效
+        this.drawTerrainPreview(ctx, cx, cy, hexR, type);
+
+        item.appendChild(cvs);
+
+        const textEl = document.createElement('div');
+        textEl.className = 'terrain-legend-text';
+        textEl.innerHTML = `<span class="terrain-legend-name">${info.name}</span>`
+          + `<span class="terrain-legend-desc">${info.desc}</span>`;
+        item.appendChild(textEl);
+
+        terrainLegend.appendChild(item);
+      }
+    }
+  }
+
+  /**
+   * 在地形图例 mini canvas 上绘制特效
+   */
+  drawTerrainPreview(ctx, x, y, size, type) {
+    switch (type) {
+      case 'teleporter':
+        ctx.save();
+        ctx.strokeStyle = '#a569bd';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.35, 0, Math.PI * 1.5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.55, Math.PI * 0.5, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        break;
+      case 'speed':
+        ctx.save();
+        ctx.fillStyle = '#f1c40f';
+        ctx.globalAlpha = 0.8;
+        ctx.font = `bold ${size * 0.85}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('»', x, y);
+        ctx.restore();
+        break;
+      case 'obstacle':
+        ctx.save();
+        ctx.fillStyle = '#6a6a7e';
+        ctx.globalAlpha = 0.8;
+        ctx.font = `bold ${size * 0.85}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✕', x, y);
+        ctx.restore();
+        break;
+      case 'ice':
+        ctx.save();
+        ctx.fillStyle = '#85c1e9';
+        ctx.globalAlpha = 0.7;
+        ctx.font = `${size * 0.7}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('❄', x, y);
+        ctx.restore();
+        break;
+      case 'collapse':
+        ctx.save();
+        ctx.strokeStyle = '#e67e22';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.7;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        break;
     }
   }
 
