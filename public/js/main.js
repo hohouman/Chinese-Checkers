@@ -126,12 +126,32 @@
     const infoEl = document.getElementById('player-info');
     infoEl.classList.remove('hidden');
     document.getElementById('display-name').textContent = `👤 ${playerName}`;
+    // 获取真实积分
+    loadPlayerRating();
     // 让名称可点击编辑
     infoEl.style.cursor = 'pointer';
     infoEl.onclick = () => {
       document.getElementById('player-setup').querySelector('.form-row').style.display = 'flex';
       infoEl.classList.add('hidden');
     };
+  }
+
+  async function loadPlayerRating() {
+    const el = document.getElementById('display-rating');
+    if (!playerId || playerId.startsWith('local_')) {
+      el.textContent = '积分: 1000';
+      return;
+    }
+    try {
+      const data = await NetworkClient.getPlayer(playerId);
+      if (data && data.rating !== undefined) {
+        el.textContent = `积分: ${data.rating}`;
+      } else {
+        el.textContent = '积分: 1000';
+      }
+    } catch (e) {
+      el.textContent = '积分: 1000';
+    }
   }
 
   async function startPVE() {
@@ -366,6 +386,9 @@
       game.renderer.stopRenderLoop();
       network.disconnect();
       showScreen('lobby-screen');
+      // 刷新积分和排行榜
+      loadPlayerRating();
+      loadLeaderboard();
     });
 
     document.getElementById('btn-review-board').addEventListener('click', () => {
@@ -378,6 +401,9 @@
       game.renderer.stopRenderLoop();
       network.disconnect();
       showScreen('lobby-screen');
+      // 刷新积分和排行榜
+      loadPlayerRating();
+      loadLeaderboard();
     });
 
     // 法师能力按钮
