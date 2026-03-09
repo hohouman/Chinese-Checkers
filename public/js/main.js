@@ -111,6 +111,10 @@
         playerId = result.id;
         localStorage.setItem('playerId', playerId);
       }
+      // 立即更新积分显示
+      if (result.rating !== undefined) {
+        document.getElementById('display-rating').textContent = `积分: ${result.rating}`;
+      }
     } catch (e) {
       // 离线时生成本地ID
       if (!playerId) {
@@ -148,6 +152,11 @@
       const data = await NetworkClient.getPlayer(playerId);
       if (data && data.rating !== undefined) {
         el.textContent = `积分: ${data.rating}`;
+        // 如果服务端返回了不同的 ID（玩家身份关联修正），同步更新
+        if (data.id && data.id !== playerId) {
+          playerId = data.id;
+          localStorage.setItem('playerId', playerId);
+        }
       } else {
         el.textContent = '积分: 1000';
       }

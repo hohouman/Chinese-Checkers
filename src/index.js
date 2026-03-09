@@ -103,10 +103,24 @@ async function handleCreatePlayer(request, env) {
         'SELECT * FROM players WHERE id = ?'
       ).bind(existingId).first();
       if (row) {
+        // 如果该 ID 没有游戏记录，检查是否有同名的有记录玩家（修复重复创建问题）
+        if (row.games_played === 0) {
+          const realPlayer = await env.DB.prepare(
+            'SELECT * FROM players WHERE name = ? AND games_played > 0 ORDER BY rating DESC LIMIT 1'
+          ).bind(name).first();
+          if (realPlayer) {
+            // 关联回有游戏记录的玩家
+            await env.SESSIONS.put(`player:${realPlayer.id}`, JSON.stringify({
+              id: realPlayer.id, name, rating: realPlayer.rating,
+              games_played: realPlayer.games_played, games_won: realPlayer.games_won,
+              createdAt: Date.now(),
+            }), { expirationTtl: 86400 * 30 });
+            return Response.json({ id: realPlayer.id, name, rating: realPlayer.rating });
+          }
+        }
         await env.DB.prepare(
           'UPDATE players SET name = ?, last_seen = datetime(\'now\') WHERE id = ?'
         ).bind(name, existingId).run();
-        // 更新 KV
         await env.SESSIONS.put(`player:${existingId}`, JSON.stringify({
           id: existingId, name, rating: row.rating, games_played: row.games_played,
           games_won: row.games_won, createdAt: Date.now(),
@@ -116,7 +130,21 @@ async function handleCreatePlayer(request, env) {
     } catch (e) {
       console.error('DB update error:', e);
     }
-    // DB 中找不到 → 尝试 KV
+    // DB 中找不到 → 尝试按名字查找有游戏记录的玩家
+    try {
+      const realPlayer = await env.DB.prepare(
+        'SELECT * FROM players WHERE name = ? AND games_played > 0 ORDER BY rating DESC LIMIT 1'
+      ).bind(name).first();
+      if (realPlayer) {
+        await env.SESSIONS.put(`player:${realPlayer.id}`, JSON.stringify({
+          id: realPlayer.id, name, rating: realPlayer.rating,
+          games_played: realPlayer.games_played, games_won: realPlayer.games_won,
+          createdAt: Date.now(),
+        }), { expirationTtl: 86400 * 30 });
+        return Response.json({ id: realPlayer.id, name, rating: realPlayer.rating });
+      }
+    } catch (e) { /* ignore */ }
+    // KV fallback
     const cached = await env.SESSIONS.get(`player:${existingId}`, 'json');
     if (cached) {
       cached.name = name;
@@ -125,7 +153,21 @@ async function handleCreatePlayer(request, env) {
     }
   }
 
-  // 新玩家
+  // 新玩家：先检查是否有同名且有游戏记录的玩家
+  try {
+    const existingByName = await env.DB.prepare(
+      'SELECT * FROM players WHERE name = ? AND games_played > 0 ORDER BY rating DESC LIMIT 1'
+    ).bind(name).first();
+    if (existingByName) {
+      await env.SESSIONS.put(`player:${existingByName.id}`, JSON.stringify({
+        id: existingByName.id, name, rating: existingByName.rating,
+        games_played: existingByName.games_played, games_won: existingByName.games_won,
+        createdAt: Date.now(),
+      }), { expirationTtl: 86400 * 30 });
+      return Response.json({ id: existingByName.id, name, rating: existingByName.rating });
+    }
+  } catch (e) { /* ignore */ }
+
   const id = crypto.randomUUID();
   try {
     await env.DB.prepare(
