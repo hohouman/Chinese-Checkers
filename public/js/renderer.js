@@ -381,20 +381,29 @@ class BoardRenderer {
       hop: 'rgba(102,187,106,0.3)',
       assassin_leap: 'rgba(255,107,157,0.3)',
       scout_dash: 'rgba(255,167,38,0.3)',
+      mage_target: 'rgba(165,105,189,0.35)',
     };
 
     ctx.fillStyle = colors[move.type] || 'rgba(79,195,247,0.2)';
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.strokeStyle = move.type === 'mage_target' ? 'rgba(165,105,189,0.8)' : 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // 小点指示
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
-    ctx.fill();
+    // 小点指示（法师用星型）
+    if (move.type === 'mage_target') {
+      ctx.fillStyle = 'rgba(165,105,189,0.9)';
+      ctx.font = `${this.hexSize * 0.5}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', pos.x, pos.y);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }

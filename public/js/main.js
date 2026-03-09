@@ -357,10 +357,16 @@
     // 法师能力按钮
     document.querySelectorAll('.ability-btn').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.classList.contains('disabled')) return;
         document.querySelectorAll('.ability-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         game.activateMageAbility(btn.dataset.terrain);
       });
+    });
+
+    // 法师能力取消按钮
+    document.getElementById('ability-cancel-btn')?.addEventListener('click', () => {
+      game.cancelMageAbility();
     });
   }
 

@@ -175,12 +175,35 @@
           </div>
 
           <div id="ability-panel" class="card hidden">
-            <h4>🔮 法师能力</h4>
-            <div class="ability-options">
-              <button class="btn btn-sm ability-btn" data-terrain="speed">加速带</button>
-              <button class="btn btn-sm ability-btn" data-terrain="ice">冰面</button>
-              <button class="btn btn-sm ability-btn" data-terrain="obstacle">障碍物</button>
+            <div class="ability-header">
+              <span class="ability-title">🔮 地形塑造</span>
+              <span id="ability-cooldown-tag" class="ability-cd-tag hidden"></span>
             </div>
+            <p class="ability-hint">选择地形后点击相邻空格放置</p>
+            <div class="ability-options">
+              <button class="ability-btn" data-terrain="speed">
+                <span class="ability-btn-icon" style="background:#7d6608;border-color:#f1c40f">⚡</span>
+                <span class="ability-btn-text">
+                  <span class="ability-btn-name">加速带</span>
+                  <span class="ability-btn-desc">踏入获得额外回合</span>
+                </span>
+              </button>
+              <button class="ability-btn" data-terrain="ice">
+                <span class="ability-btn-icon" style="background:#1a5276;border-color:#5dade2">❄️</span>
+                <span class="ability-btn-text">
+                  <span class="ability-btn-name">冰面</span>
+                  <span class="ability-btn-desc">棋子滑行无法停留</span>
+                </span>
+              </button>
+              <button class="ability-btn" data-terrain="obstacle">
+                <span class="ability-btn-icon" style="background:#4a4a5e;border-color:#6a6a7e">🪨</span>
+                <span class="ability-btn-text">
+                  <span class="ability-btn-name">障碍物</span>
+                  <span class="ability-btn-desc">阻挡所有移动路径</span>
+                </span>
+              </button>
+            </div>
+            <button id="ability-cancel-btn" class="btn btn-sm ability-cancel hidden">✕ 取消选择</button>
           </div>
 
           <div class="game-actions">

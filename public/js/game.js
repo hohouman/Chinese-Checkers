@@ -289,10 +289,31 @@ class GameClient {
     // 显示棋子信息
     this.showPieceInfo(piece);
 
-    // 如果是法师且能力就绪，显示能力面板
+    // 如果是法师，管理能力面板状态
     const abilityPanel = document.getElementById('ability-panel');
-    if (piece.type === 'mage' && piece.cooldown <= 0 && this.gameState.config.enableAbilities) {
+    const cdTag = document.getElementById('ability-cooldown-tag');
+    if (piece.type === 'mage' && this.gameState.config.enableAbilities) {
       abilityPanel?.classList.remove('hidden');
+      if (piece.cooldown > 0) {
+        // 冷却中 - 禁用按钮
+        document.querySelectorAll('.ability-btn').forEach(b => {
+          b.classList.add('disabled');
+          b.style.pointerEvents = 'none';
+          b.style.opacity = '0.4';
+        });
+        if (cdTag) {
+          cdTag.textContent = `冷却 ${piece.cooldown} 回合`;
+          cdTag.classList.remove('hidden');
+        }
+      } else {
+        // 可用
+        document.querySelectorAll('.ability-btn').forEach(b => {
+          b.classList.remove('disabled');
+          b.style.pointerEvents = '';
+          b.style.opacity = '';
+        });
+        if (cdTag) cdTag.classList.add('hidden');
+      }
     } else {
       abilityPanel?.classList.add('hidden');
     }
@@ -311,6 +332,8 @@ class GameClient {
     this.renderer.setValidMoves([]);
     document.getElementById('selected-piece-info')?.classList.add('hidden');
     document.getElementById('ability-panel')?.classList.add('hidden');
+    document.getElementById('ability-cancel-btn')?.classList.add('hidden');
+    document.querySelectorAll('.ability-btn').forEach(b => b.classList.remove('active'));
   }
 
   /**
@@ -419,11 +442,22 @@ class GameClient {
     const player = this.gameState.players.find(p => p.index === piece.player);
     const color = player?.color?.color || '#fff';
 
+    let abilityLine = '';
+    if (piece.type === 'mage') {
+      if (piece.cooldown > 0) {
+        abilityLine = `<div class="piece-ability-status cd">🔮 技能冷却中 (${piece.cooldown}回合)</div>`;
+      } else if (this.gameState.config.enableAbilities) {
+        abilityLine = `<div class="piece-ability-status ready">🔮 地形塑造就绪 ▶</div>`;
+      }
+    } else if (piece.cooldown > 0) {
+      abilityLine = `<div style="color:var(--text-dim);font-size:11px">技能冷却: ${piece.cooldown}回合</div>`;
+    }
+
     info.innerHTML = `
       <div class="piece-name" style="color:${color}">${type.icon} ${type.name}</div>
       <div class="piece-desc">${type.desc}</div>
       ${this.gameState.mode === 'survival' ? `<div class="piece-hp">HP: ${piece.hp}/${piece.maxHp}</div>` : ''}
-      ${piece.cooldown > 0 ? `<div style="color:var(--text-dim);font-size:11px">技能冷却: ${piece.cooldown}回合</div>` : ''}
+      ${abilityLine}
     `;
     info.classList.remove('hidden');
   }
@@ -451,14 +485,17 @@ class GameClient {
    */
   activateMageAbility(terrain) {
     if (!this.selectedPieceId) return;
+    const piece = this.gameState.pieces.find(p => p.id === this.selectedPieceId);
+    if (!piece || piece.cooldown > 0) return;
+
     this.mageAbilityMode = true;
     this.mageAbilityTerrain = terrain;
     this.mageAbilityPieceId = this.selectedPieceId;
 
-    // 高亮可以目标的相邻格子
-    const piece = this.gameState.pieces.find(p => p.id === this.selectedPieceId);
-    if (!piece) return;
+    // 显示取消按钮
+    document.getElementById('ability-cancel-btn')?.classList.remove('hidden');
 
+    // 高亮可以目标的相邻格子（用特殊类型标识法师能力目标）
     const HEX_DIRS = [
       { q: 1, r: -1 }, { q: 1, r: 0 }, { q: 0, r: 1 },
       { q: -1, r: 1 }, { q: -1, r: 0 }, { q: 0, r: -1 },
@@ -469,11 +506,28 @@ class GameClient {
       const nk = `${piece.q + d.q},${piece.r + d.r}`;
       const cell = this.gameState.board[nk];
       if (cell && cell.zone === 'center' && !cell.piece) {
-        targets.push({ to: nk, type: 'step' });
+        targets.push({ to: nk, type: 'mage_target' });
       }
     }
     this.renderer.setValidMoves(targets);
-    showToast('选择要改变地形的相邻格子', 'info');
+
+    const terrainName = this.terrainTypes[terrain]?.name || terrain;
+    showToast(`选择相邻空格放置「${terrainName}」`, 'info');
+  }
+
+  /**
+   * 取消法师能力选择
+   */
+  cancelMageAbility() {
+    this.mageAbilityMode = false;
+    this.mageAbilityTerrain = null;
+    document.querySelectorAll('.ability-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('ability-cancel-btn')?.classList.add('hidden');
+    // 恢复移动高亮
+    if (this.selectedPieceId) {
+      const piece = this.gameState.pieces.find(p => p.id === this.selectedPieceId);
+      if (piece) this.calculateValidMoves(piece);
+    }
   }
 
   // ==================== 网络事件处理 ====================
@@ -588,7 +642,11 @@ class GameClient {
       this.gameState = data.state;
       this.updateGameUI(data.state);
     }
-    addEventLog(`🔮 法师改变了地形 → ${this.terrainTypes[data.terrain]?.name || data.terrain}`);
+    const terrainInfo = this.terrainTypes[data.terrain];
+    const terrainName = terrainInfo?.name || data.terrain;
+    const aiTag = data.isAI ? ' (AI)' : '';
+    showEventPopup('🔮', '地形塑造' + aiTag, `法师将地形变为「${terrainName}」`, '', 'ability');
+    addEventLog(`🔮 法师改变了地形 → ${terrainName}`);
   }
 
   onRandomEvent(data) {
