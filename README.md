@@ -2,6 +2,8 @@
 
 基于 **Cloudflare** 全栈方案（Workers + Durable Objects + D1 + KV + R2）的改版跳棋在线对战游戏。
 
+> 🌐 **在线体验**：[https://chinese-checkers-online.leidun.pp.ua/](https://chinese-checkers-online.leidun.pp.ua/)
+
 ## 🎮 游戏特色
 
 ### 三大游戏模式
