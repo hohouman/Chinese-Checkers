@@ -194,6 +194,100 @@ export function executeEvent(board, pieces, event) {
 }
 
 /**
+ * 随机重排所有特殊地形的位置
+ * 收集所有非 normal 的中心区地形，随机分配到中心区的空普通格中
+ * 传送阵的配对关系会保留
+ */
+export function shuffleTerrainPositions(board) {
+  const changes = [];
+
+  // 收集所有中心区的特殊地形（排除有棋子占据的格子，避免影响游戏状态）
+  const specialCells = [];
+  for (const [key, cell] of Object.entries(board)) {
+    if (cell.zone === 'center' && cell.terrain !== 'normal') {
+      specialCells.push({
+        key,
+        terrain: cell.terrain,
+        terrainData: cell.terrainData ? JSON.parse(JSON.stringify(cell.terrainData)) : null,
+      });
+    }
+  }
+
+  if (specialCells.length === 0) return changes;
+
+  // 清除原有特殊地形
+  for (const sc of specialCells) {
+    board[sc.key].terrain = 'normal';
+    board[sc.key].terrainData = null;
+  }
+
+  // 获取可用的中心区空普通格（无棋子、无特殊地形）
+  const available = Object.keys(board).filter(
+    k => board[k].zone === 'center' && board[k].terrain === 'normal' && !board[k].piece
+  );
+
+  // Fisher-Yates 洗牌
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+
+  // 分离传送阵对和其他地形
+  const teleporterPairs = [];
+  const otherTerrains = [];
+  const visited = new Set();
+
+  for (const sc of specialCells) {
+    if (sc.terrain === 'teleporter' && !visited.has(sc.key)) {
+      const linked = sc.terrainData?.linkedTo;
+      const partner = specialCells.find(s => s.key === linked);
+      if (partner) {
+        visited.add(sc.key);
+        visited.add(partner.key);
+        teleporterPairs.push([sc, partner]);
+      } else {
+        otherTerrains.push(sc);
+      }
+    } else if (!visited.has(sc.key)) {
+      otherTerrains.push(sc);
+    }
+  }
+
+  let idx = 0;
+  const take = () => idx < available.length ? available[idx++] : null;
+
+  // 放置传送阵对
+  for (const [a, b] of teleporterPairs) {
+    const newA = take(), newB = take();
+    if (!newA || !newB) break;
+    board[newA].terrain = 'teleporter';
+    board[newA].terrainData = { linkedTo: newB };
+    board[newB].terrain = 'teleporter';
+    board[newB].terrainData = { linkedTo: newA };
+    changes.push({ type: 'terrainChange', key: newA, terrain: 'teleporter' });
+    changes.push({ type: 'terrainChange', key: newB, terrain: 'teleporter' });
+  }
+
+  // 放置其他地形
+  for (const sc of otherTerrains) {
+    const newKey = take();
+    if (!newKey) break;
+    board[newKey].terrain = sc.terrain;
+    board[newKey].terrainData = sc.terrainData;
+    changes.push({ type: 'terrainChange', key: newKey, terrain: sc.terrain });
+  }
+
+  // 记录被清除的原位置（现在是 normal 的格子）
+  for (const sc of specialCells) {
+    if (board[sc.key].terrain === 'normal') {
+      changes.push({ type: 'terrainChange', key: sc.key, terrain: 'normal' });
+    }
+  }
+
+  return changes;
+}
+
+/**
  * 将棋子弹出到相邻空格
  */
 function displacePiece(board, pieces, key) {

@@ -13,7 +13,7 @@ import {
 } from './game/pieces.js';
 import { generateRandomTerrain, applyTerrainEffect, checkCollapseEvents } from './game/terrain.js';
 import { getValidMoves, executeMove, executeMageAbility } from './game/rules.js';
-import { shouldTriggerEvent, generateRandomEvent, executeEvent } from './game/events.js';
+import { shouldTriggerEvent, generateRandomEvent, executeEvent, shuffleTerrainPositions } from './game/events.js';
 import { GAME_MODES, setupResourceCells, calculateTurnScores, checkVictory, getGameRanking } from './game/modes.js';
 import { getAIMove, getAIMageAction } from './game/ai.js';
 
@@ -623,6 +623,9 @@ export class GameRoom {
           const event = generateRandomEvent(gs.board, gs.turn, gs.mode);
           if (event) {
             const changes = executeEvent(gs.board, gs.pieces, event);
+            // 触发事件时随机重排特殊地形位置
+            const shuffleChanges = shuffleTerrainPositions(gs.board);
+            changes.push(...shuffleChanges);
             gs.events.push(event);
             this.broadcast({
               type: 'randomEvent',
