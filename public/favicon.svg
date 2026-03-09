@@ -1,60 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
-      <stop offset="0%" stop-color="#2a2a4e"/>
-      <stop offset="100%" stop-color="#0d0d1a"/>
-    </radialGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <linearGradient id="star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#ff8c00"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <filter id="g">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="gs">
+      <feGaussianBlur stdDeviation="3"/>
     </filter>
   </defs>
 
-  <!-- Background circle -->
-  <circle cx="64" cy="64" r="62" fill="url(#bg)" stroke="#4a4a7a" stroke-width="2"/>
+  <!-- Rounded square background -->
+  <rect width="128" height="128" rx="24" fill="url(#bg)"/>
 
-  <!-- Star board outline (6-pointed star) -->
-  <polygon
-    points="64,8 78,40 112,40 84,60 94,92 64,74 34,92 44,60 16,40 50,40"
-    fill="none" stroke="#6c6c9e" stroke-width="1.5" stroke-linejoin="round" opacity="0.5"/>
+  <!-- Outer glow for star -->
+  <polygon points="64,6 76,44 114,44 82,66 92,104 64,82 36,104 46,66 14,44 52,44"
+    fill="#ffd700" opacity="0.15" filter="url(#gs)"/>
 
-  <!-- Inner hexagon (center board) -->
-  <polygon
-    points="64,32 86,48 86,72 64,88 42,72 42,48"
-    fill="#1e1e3a" stroke="#5a5a8e" stroke-width="1" opacity="0.7"/>
+  <!-- 6-pointed star (the board) - bold & clean -->
+  <polygon points="64,12 76,44 110,44 82,64 92,98 64,78 36,98 46,64 18,44 52,44"
+    fill="url(#star)" stroke="#fff3" stroke-width="1" stroke-linejoin="round" filter="url(#g)"/>
 
-  <!-- Hex grid lines (subtle) -->
-  <line x1="64" y1="32" x2="64" y2="88" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
-  <line x1="42" y1="48" x2="86" y2="72" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
-  <line x1="42" y1="72" x2="86" y2="48" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
+  <!-- Inner hex (center area) -->
+  <polygon points="64,36 80,50 80,70 64,84 48,70 48,50"
+    fill="#1a1a2e" stroke="#ffd70066" stroke-width="1.5"/>
 
-  <!-- Red pieces (top arm) -->
-  <circle cx="64" cy="18" r="5" fill="#e74c3c" filter="url(#glow)"/>
-  <circle cx="58" cy="28" r="4" fill="#e74c3c" opacity="0.8"/>
-  <circle cx="70" cy="28" r="4" fill="#e74c3c" opacity="0.8"/>
+  <!-- Red piece (top) -->
+  <circle cx="64" cy="22" r="7" fill="#e74c3c" stroke="#fff" stroke-width="2"/>
 
-  <!-- Blue pieces (bottom arm) -->
-  <circle cx="64" cy="102" r="5" fill="#3498db" filter="url(#glow)"/>
-  <circle cx="58" cy="94" r="4" fill="#3498db" opacity="0.8"/>
-  <circle cx="70" cy="94" r="4" fill="#3498db" opacity="0.8"/>
+  <!-- Blue piece (bottom) -->
+  <circle cx="64" cy="90" r="7" fill="#3498db" stroke="#fff" stroke-width="2"/>
 
   <!-- Green piece (right) -->
-  <circle cx="100" cy="52" r="4.5" fill="#27ae60" filter="url(#glow)"/>
-  <circle cx="94" cy="44" r="3.5" fill="#27ae60" opacity="0.8"/>
+  <circle cx="100" cy="52" r="6" fill="#2ecc71" stroke="#fff" stroke-width="1.5"/>
 
   <!-- Purple piece (left) -->
-  <circle cx="28" cy="76" r="4.5" fill="#8e44ad" filter="url(#glow)"/>
-  <circle cx="34" cy="84" r="3.5" fill="#8e44ad" opacity="0.8"/>
+  <circle cx="28" cy="52" r="6" fill="#9b59b6" stroke="#fff" stroke-width="1.5"/>
 
-  <!-- Orange piece (bottom-right) -->
-  <circle cx="98" cy="82" r="4" fill="#e67e22" filter="url(#glow)"/>
-
-  <!-- Cyan piece (top-left) -->
-  <circle cx="30" cy="46" r="4" fill="#16a085" filter="url(#glow)"/>
-
-  <!-- Center piece highlight (a piece mid-move) -->
-  <circle cx="64" cy="60" r="5.5" fill="#f1c40f" filter="url(#glow)" opacity="0.9"/>
-
-  <!-- Sparkle on the moving piece -->
-  <text x="60" y="65" font-size="9" fill="white" opacity="0.9">★</text>
+  <!-- Center piece - golden star (法师) -->
+  <circle cx="64" cy="58" r="9" fill="#f1c40f" stroke="#fff" stroke-width="2"/>
+  <text x="64" y="63" text-anchor="middle" font-size="13" font-weight="bold" fill="#1a1a2e" font-family="sans-serif">★</text>
 </svg>
