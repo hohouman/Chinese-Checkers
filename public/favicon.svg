@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#2a2a4e"/>
+      <stop offset="100%" stop-color="#0d0d1a"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="62" fill="url(#bg)" stroke="#4a4a7a" stroke-width="2"/>
+
+  <!-- Star board outline (6-pointed star) -->
+  <polygon
+    points="64,8 78,40 112,40 84,60 94,92 64,74 34,92 44,60 16,40 50,40"
+    fill="none" stroke="#6c6c9e" stroke-width="1.5" stroke-linejoin="round" opacity="0.5"/>
+
+  <!-- Inner hexagon (center board) -->
+  <polygon
+    points="64,32 86,48 86,72 64,88 42,72 42,48"
+    fill="#1e1e3a" stroke="#5a5a8e" stroke-width="1" opacity="0.7"/>
+
+  <!-- Hex grid lines (subtle) -->
+  <line x1="64" y1="32" x2="64" y2="88" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
+  <line x1="42" y1="48" x2="86" y2="72" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
+  <line x1="42" y1="72" x2="86" y2="48" stroke="#3a3a5e" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Red pieces (top arm) -->
+  <circle cx="64" cy="18" r="5" fill="#e74c3c" filter="url(#glow)"/>
+  <circle cx="58" cy="28" r="4" fill="#e74c3c" opacity="0.8"/>
+  <circle cx="70" cy="28" r="4" fill="#e74c3c" opacity="0.8"/>
+
+  <!-- Blue pieces (bottom arm) -->
+  <circle cx="64" cy="102" r="5" fill="#3498db" filter="url(#glow)"/>
+  <circle cx="58" cy="94" r="4" fill="#3498db" opacity="0.8"/>
+  <circle cx="70" cy="94" r="4" fill="#3498db" opacity="0.8"/>
+
+  <!-- Green piece (right) -->
+  <circle cx="100" cy="52" r="4.5" fill="#27ae60" filter="url(#glow)"/>
+  <circle cx="94" cy="44" r="3.5" fill="#27ae60" opacity="0.8"/>
+
+  <!-- Purple piece (left) -->
+  <circle cx="28" cy="76" r="4.5" fill="#8e44ad" filter="url(#glow)"/>
+  <circle cx="34" cy="84" r="3.5" fill="#8e44ad" opacity="0.8"/>
+
+  <!-- Orange piece (bottom-right) -->
+  <circle cx="98" cy="82" r="4" fill="#e67e22" filter="url(#glow)"/>
+
+  <!-- Cyan piece (top-left) -->
+  <circle cx="30" cy="46" r="4" fill="#16a085" filter="url(#glow)"/>
+
+  <!-- Center piece highlight (a piece mid-move) -->
+  <circle cx="64" cy="60" r="5.5" fill="#f1c40f" filter="url(#glow)" opacity="0.9"/>
+
+  <!-- Sparkle on the moving piece -->
+  <text x="60" y="65" font-size="9" fill="white" opacity="0.9">★</text>
+</svg>
