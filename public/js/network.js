@@ -12,6 +12,9 @@ class NetworkClient {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.pingInterval = null;
+    // 每个标签页独立的连接ID，支持同浏览器多标签 PVP
+    this.connId = crypto.randomUUID ? crypto.randomUUID() :
+      'c_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 
   /**
@@ -51,7 +54,7 @@ class NetworkClient {
     this.stopPing();
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${location.host}/api/rooms/${roomId}/ws?playerId=${playerId}&name=${encodeURIComponent(playerName)}`;
+    const url = `${protocol}//${location.host}/api/rooms/${roomId}/ws?playerId=${playerId}&name=${encodeURIComponent(playerName)}&connId=${this.connId}`;
 
     this.ws = new WebSocket(url);
 

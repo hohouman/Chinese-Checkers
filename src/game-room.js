@@ -56,13 +56,28 @@ export class GameRoom {
     const [client, server] = Object.values(pair);
 
     const params = url.searchParams;
-    const playerId = params.get('playerId') || crypto.randomUUID();
+    let playerId = params.get('playerId') || crypto.randomUUID();
     const playerName = params.get('name') || '玩家';
+    // 每个标签页/连接独立的 connId，支持同浏览器多标签 PVP
+    const connId = params.get('connId') || crypto.randomUUID();
 
-    this.ctx.acceptWebSocket(server, [playerId]);
+    // 如果该 playerId 已有活跃连接（同浏览器多标签），为新连接分配独立 ID
+    // 真正的断线重连不受影响（旧连接已关闭，没有活跃连接）
+    const existingForPlayer = await this.hasActiveConnections(playerId);
+    if (existingForPlayer) {
+      const oldId = playerId;
+      playerId = `guest_${crypto.randomUUID().slice(0, 8)}`;
+      console.log(`[ws] playerId=${oldId} already connected, assigned new: ${playerId}`);
+    }
+
+    // 用 connId 作为 WebSocket tag（确保每个连接唯一）
+    this.ctx.acceptWebSocket(server, [connId]);
+
+    // 保存 connId → playerId 映射
+    await this.storage.put(`conn:${connId}`, playerId);
 
     const existingSockets = this.ctx.getWebSockets();
-    console.log(`[ws] New connection: playerId=${playerId} totalSockets=${existingSockets.length}`);
+    console.log(`[ws] New connection: playerId=${playerId} connId=${connId} totalSockets=${existingSockets.length}`);
 
     // 发送初始状态
     const gs = await this.getGameState();
@@ -87,7 +102,9 @@ export class GameRoom {
     try {
       const data = JSON.parse(message);
       const tags = this.ctx.getTags(ws);
-      const playerId = tags[0];
+      const connId = tags[0];
+      // 通过 connId 查找 playerId
+      const playerId = await this.storage.get(`conn:${connId}`) || connId;
 
       switch (data.type) {
         case 'createGame':
@@ -125,11 +142,10 @@ export class GameRoom {
         case 'getState': {
           const refreshGs = await this.getGameState();
           if (refreshGs) {
-            const refreshTags = this.ctx.getTags(ws);
             ws.send(JSON.stringify({
               type: 'gameState',
               state: this.sanitizeState(refreshGs),
-              yourId: refreshTags[0],
+              yourId: playerId,
             }));
           }
           break;
@@ -142,15 +158,22 @@ export class GameRoom {
 
   async webSocketClose(ws, code, reason, wasClean) {
     const tags = this.ctx.getTags(ws);
-    const playerId = tags[0];
-    console.log(`[ws] Close: playerId=${playerId} code=${code} reason=${reason}`);
+    const connId = tags[0];
+    const playerId = await this.storage.get(`conn:${connId}`) || connId;
+    console.log(`[ws] Close: playerId=${playerId} connId=${connId} code=${code} reason=${reason}`);
+    // 清理连接映射
+    await this.storage.delete(`conn:${connId}`);
     const gs = await this.getGameState();
     if (gs) {
       const player = gs.players.find(p => p.id === playerId);
       if (player) {
-        player.connected = false;
-        await this.saveGameState(gs);
-        this.broadcast({ type: 'playerDisconnected', playerId, name: player.name });
+        // 检查该 playerId 是否还有其他活跃连接
+        const hasOtherConns = await this.hasActiveConnections(playerId);
+        if (!hasOtherConns) {
+          player.connected = false;
+          await this.saveGameState(gs);
+          this.broadcast({ type: 'playerDisconnected', playerId, name: player.name });
+        }
       }
 
       // 如果所有真人玩家都断连，设置延迟清理 alarm
@@ -824,15 +847,35 @@ export class GameRoom {
     }
   }
 
-  sendTo(playerId, data) {
-    const sockets = this.ctx.getWebSockets(playerId);
+  async sendTo(playerId, data) {
     const msg = JSON.stringify(data);
-    console.log(`[sendTo] playerId=${playerId} type=${data.type} sockets=${sockets.length}`);
+    const sockets = this.ctx.getWebSockets();
+    let sent = 0;
     for (const ws of sockets) {
-      try { ws.send(msg); } catch (e) {
-        console.error(`[sendTo] send failed for ${playerId}:`, e.message);
+      const tags = this.ctx.getTags(ws);
+      const connId = tags[0];
+      const pid = await this.storage.get(`conn:${connId}`);
+      if (pid === playerId) {
+        try { ws.send(msg); sent++; } catch (e) {
+          console.error(`[sendTo] send failed for ${playerId}:`, e.message);
+        }
       }
     }
+    console.log(`[sendTo] playerId=${playerId} type=${data.type} sent=${sent}/${sockets.length}`);
+  }
+
+  /**
+   * 检查某 playerId 是否还有活跃的 WebSocket 连接
+   */
+  async hasActiveConnections(playerId) {
+    const sockets = this.ctx.getWebSockets();
+    for (const ws of sockets) {
+      const tags = this.ctx.getTags(ws);
+      const connId = tags[0];
+      const pid = await this.storage.get(`conn:${connId}`);
+      if (pid === playerId) return true;
+    }
+    return false;
   }
 
   async saveGameResult(gs, ranking) {

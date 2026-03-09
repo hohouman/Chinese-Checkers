@@ -340,6 +340,7 @@ Chinese-Checkers/
 - `move` - 移动棋子 `{pieceId, to}`
 - `ability` - 使用技能 `{pieceId, targetKey, terrain}`
 - `endTurn` - 结束回合
+- `getState` - 请求当前完整状态（广播后备机制）
 - `chat` - 聊天消息
 
 ### 服务端 → 客户端
@@ -347,6 +348,7 @@ Chinese-Checkers/
 - `gameCreated` - 游戏已创建
 - `gameStarted` - 游戏开始
 - `playerJoined` - 玩家加入
+- `playerReconnected` - 玩家重连
 - `playerReady` - 玩家准备
 - `playerDisconnected` - 玩家断连
 - `moved` - 棋子移动
