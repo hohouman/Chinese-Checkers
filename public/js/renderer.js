@@ -19,6 +19,15 @@ class BoardRenderer {
     this.playerColors = [];
     this.gameMode = 'classic';
 
+    // 传送阵配对样式（颜色+标签）
+    this.teleporterPairStyles = [
+      { color: '#1abc9c', fill: '#0e6655', border: '#1abc9c', label: '①' },
+      { color: '#e74c3c', fill: '#78281f', border: '#e74c3c', label: '②' },
+      { color: '#f39c12', fill: '#7d6608', border: '#f39c12', label: '③' },
+      { color: '#3498db', fill: '#1a5276', border: '#3498db', label: '④' },
+    ];
+    this.teleporterPairMap = {}; // cellKey → pairIndex
+
     // 地形颜色
     this.terrainColors = {
       normal: '#2a2a3e',
@@ -178,6 +187,9 @@ class BoardRenderer {
     // 绘制背景星光效果
     this.drawBackground(ctx);
 
+    // 构建传送阵配对映射
+    this.buildTeleporterPairMap();
+
     // 绘制所有格子
     for (const [key, cell] of Object.entries(this.boardState)) {
       this.drawCell(ctx, key, cell);
@@ -238,8 +250,12 @@ class BoardRenderer {
     }
     ctx.closePath();
 
-    // 填充 - 地形决定基色
+    // 填充 - 地形决定基色（传送阵按配对着色）
     let fillColor = this.terrainColors[cell.terrain] || this.terrainColors.normal;
+    if (cell.terrain === 'teleporter') {
+      const pIdx = (this.teleporterPairMap[key] ?? 0) % this.teleporterPairStyles.length;
+      fillColor = this.teleporterPairStyles[pIdx].fill;
+    }
 
     // 区域覆盖色
     if (cell.zone !== 'center' && cell.terrain === 'normal') {
@@ -263,7 +279,10 @@ class BoardRenderer {
 
     // 边框
     let borderColor = this.terrainBorder[cell.terrain] || '#3a3a52';
-    if (cell.zone !== 'center' && cell.terrain === 'normal') {
+    if (cell.terrain === 'teleporter') {
+      const pIdx = (this.teleporterPairMap[key] ?? 0) % this.teleporterPairStyles.length;
+      borderColor = this.teleporterPairStyles[pIdx].border;
+    } else if (cell.zone !== 'center' && cell.terrain === 'normal') {
       borderColor = this.zoneBorderColors[cell.zone] || '#3a3a52';
     }
     if (isHovered) borderColor = '#ffffff';
@@ -274,7 +293,8 @@ class BoardRenderer {
 
     // 特殊地形装饰
     if (cell.terrain === 'teleporter') {
-      this.drawTeleporterEffect(ctx, pos.x, pos.y, size);
+      const pIdx = (this.teleporterPairMap[key] ?? 0) % this.teleporterPairStyles.length;
+      this.drawTeleporterEffect(ctx, pos.x, pos.y, size, pIdx);
     } else if (cell.terrain === 'speed') {
       this.drawSpeedEffect(ctx, pos.x, pos.y, size);
     } else if (cell.terrain === 'obstacle') {
@@ -297,9 +317,26 @@ class BoardRenderer {
     ctx.restore();
   }
 
-  drawTeleporterEffect(ctx, x, y, size) {
+  buildTeleporterPairMap() {
+    this.teleporterPairMap = {};
+    if (!this.boardState) return;
+    let pairIndex = 0;
+    for (const [key, cell] of Object.entries(this.boardState)) {
+      if (cell.terrain === 'teleporter' && !(key in this.teleporterPairMap)) {
+        this.teleporterPairMap[key] = pairIndex;
+        const linked = cell.terrainData && cell.terrainData.linkedTo;
+        if (linked) {
+          this.teleporterPairMap[linked] = pairIndex;
+        }
+        pairIndex++;
+      }
+    }
+  }
+
+  drawTeleporterEffect(ctx, x, y, size, pairIndex = 0) {
+    const style = this.teleporterPairStyles[pairIndex % this.teleporterPairStyles.length];
     ctx.save();
-    ctx.strokeStyle = '#a569bd';
+    ctx.strokeStyle = style.color;
     ctx.lineWidth = 1.5;
     ctx.globalAlpha = 0.6;
     const t = Date.now() / 1000;
@@ -309,6 +346,13 @@ class BoardRenderer {
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.stroke();
     }
+    // 配对标签
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = style.color;
+    ctx.font = `bold ${size * 0.5}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(style.label, x, y);
     ctx.restore();
   }
 
