@@ -723,6 +723,34 @@ canvas {
 .ranking-table .rank-2 { color: #c0c0c0; font-weight: 600; }
 .ranking-table .rank-3 { color: #cd7f32; }
 
+/* ====== 浮动返回按钮 ====== */
+.btn-float-back {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+  animation: floatBtnIn 0.4s ease;
+}
+.btn-float-back:hover {
+  filter: brightness(1.15);
+  transform: translateX(-50%) scale(1.05);
+}
+.btn-float-back.hidden { display: none; }
+@keyframes floatBtnIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* ====== 事件弹窗 ====== */
 .event-popup {
   position: fixed;

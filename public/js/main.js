@@ -362,6 +362,20 @@
 
     document.getElementById('btn-back-lobby').addEventListener('click', () => {
       document.getElementById('game-over-modal').classList.add('hidden');
+      document.getElementById('btn-float-back').classList.add('hidden');
+      game.renderer.stopRenderLoop();
+      network.disconnect();
+      showScreen('lobby-screen');
+    });
+
+    document.getElementById('btn-review-board').addEventListener('click', () => {
+      document.getElementById('game-over-modal').classList.add('hidden');
+      document.getElementById('btn-float-back').classList.remove('hidden');
+    });
+
+    document.getElementById('btn-float-back').addEventListener('click', () => {
+      document.getElementById('btn-float-back').classList.add('hidden');
+      game.renderer.stopRenderLoop();
       network.disconnect();
       showScreen('lobby-screen');
     });

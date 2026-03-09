@@ -8,6 +8,7 @@ class GameClient {
     this.renderer = null;
     this.network = null;
     this.gameState = null;
+    this.gameOver = false;
     this.playerId = null;
     this.selectedPieceId = null;
     this.selectedCell = null;
@@ -714,7 +715,8 @@ class GameClient {
   }
 
   onGameOver(data) {
-    this.renderer.stopRenderLoop();
+    // 不停止渲染，让玩家可以继续查看棋盘
+    this.gameOver = true;
 
     const winner = data.winner;
     const ranking = data.ranking || [];
