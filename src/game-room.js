@@ -494,6 +494,35 @@ export class GameRoom {
         // 检查塌陷事件
         const collapsed = checkCollapseEvents(gs.board, gs.turn);
         if (collapsed.length > 0) {
+          // 处理塌陷格上的棋子
+          for (const c of collapsed) {
+            if (c.hadPiece) {
+              const stuckPiece = gs.pieces.find(p => p.id === c.hadPiece);
+              if (stuckPiece && stuckPiece.active) {
+                // 尝试弹出到相邻空格
+                const dirs = [
+                  { q: 1, r: -1 }, { q: 1, r: 0 }, { q: 0, r: 1 },
+                  { q: -1, r: 1 }, { q: -1, r: 0 }, { q: 0, r: -1 },
+                ];
+                let displaced = false;
+                for (const d of dirs) {
+                  const nk = `${stuckPiece.q + d.q},${stuckPiece.r + d.r}`;
+                  if (gs.board[nk] && !gs.board[nk].piece && gs.board[nk].terrain !== 'obstacle') {
+                    gs.board[nk].piece = stuckPiece.id;
+                    gs.board[c.key].piece = null;
+                    stuckPiece.q = gs.board[nk].q;
+                    stuckPiece.r = gs.board[nk].r;
+                    displaced = true;
+                    break;
+                  }
+                }
+                if (!displaced) {
+                  stuckPiece.active = false;
+                  gs.board[c.key].piece = null;
+                }
+              }
+            }
+          }
           this.broadcast({ type: 'collapseEvent', collapsed, turn: gs.turn });
         }
 
@@ -569,6 +598,17 @@ export class GameRoom {
         piece.q = tc.q;
         piece.r = tc.r;
         result.effects.push({ type: 'teleport', from: aiMove.move.to, to: terrainEffect.teleportTo });
+      }
+
+      // AI 冰面滑行处理
+      if (terrainEffect.slid && terrainEffect.slideTo && piece) {
+        const slideFrom = terrainEffect.teleported ? terrainEffect.teleportTo : aiMove.move.to;
+        gs.board[slideFrom].piece = null;
+        gs.board[terrainEffect.slideTo].piece = piece.id;
+        const sc = gs.board[terrainEffect.slideTo];
+        piece.q = sc.q;
+        piece.r = sc.r;
+        result.effects.push({ type: 'slide', from: slideFrom, to: terrainEffect.slideTo });
       }
 
       this.broadcast({

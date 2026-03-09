@@ -40,12 +40,22 @@ class GameClient {
    * 初始化游戏
    */
   init(canvas, network, playerId) {
+    // 防止重复初始化时注册多个事件监听
+    if (this.renderer) {
+      this.renderer.destroy();
+    }
+    if (this._networkInitialized) {
+      // 已有网络事件，跳过重复注册
+    } else {
+      this._networkInitialized = true;
+      this.setupNetworkEvents();
+    }
+
     this.renderer = new BoardRenderer(canvas);
     this.network = network;
     this.playerId = playerId;
 
     this.setupCanvasEvents(canvas);
-    this.setupNetworkEvents();
     this.populateLegends();
   }
 
@@ -393,13 +403,19 @@ class GameClient {
     this.updateRoomUI(state);
 
     if (state.status === 'playing' && state.board) {
+      // 重连到进行中的游戏时，切换到游戏界面
+      showScreen('game-screen');
+      this.renderer.resize();
       this.updateGameUI(state);
+      this.renderer.startRenderLoop();
     }
   }
 
   onGameStarted(data) {
     this.gameState = data.state;
     showScreen('game-screen');
+    // 重新计算 Canvas 尺寸（从隐藏切换到可见后必须重新测量）
+    this.renderer.resize();
     this.updateGameUI(data.state);
     showToast('游戏开始！', 'success');
     this.renderer.startRenderLoop();
