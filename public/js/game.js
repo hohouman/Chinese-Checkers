@@ -636,9 +636,7 @@ class GameClient {
 
     if (data.yourId) this.playerId = data.yourId;
 
-    // 找到自己的玩家索引
-    const me = state.players.find(p => p.id === this.playerId);
-    if (me) this.myPlayerIndex = me.index;
+    this.syncMyPlayerIndex(state);
 
     this.updateRoomUI(state);
 
@@ -653,6 +651,7 @@ class GameClient {
 
   onGameStarted(data) {
     this.gameState = data.state;
+    this.syncMyPlayerIndex(data.state);
     showScreen('game-screen');
     // 重新计算 Canvas 尺寸（从隐藏切换到可见后必须重新测量）
     this.renderer.resize();
@@ -664,6 +663,7 @@ class GameClient {
   onPlayerJoined(data) {
     if (data.state) {
       this.gameState = data.state;
+      this.syncMyPlayerIndex(data.state);
       this.updateRoomUI(data.state);
     }
     showToast(`${data.player?.name || '玩家'} 加入房间`, 'info');
@@ -672,6 +672,7 @@ class GameClient {
   onPlayerReconnected(data) {
     if (data.state) {
       this.gameState = data.state;
+      this.syncMyPlayerIndex(data.state);
       this.updateRoomUI(data.state);
     }
     showToast(`${data.name || '玩家'} 重新连接`, 'info');
@@ -709,6 +710,7 @@ class GameClient {
   onTurnChanged(data) {
     if (data.state) {
       this.gameState = data.state;
+      this.syncMyPlayerIndex(data.state);
       this.updateGameUI(data.state);
     }
     this.clearSelection();
@@ -848,6 +850,15 @@ class GameClient {
   }
 
   // ==================== UI 更新 ====================
+
+  /**
+   * 每次 gameState 更新时同步 myPlayerIndex
+   */
+  syncMyPlayerIndex(state) {
+    if (!state) return;
+    const me = state.players.find(p => p.id === this.playerId);
+    if (me) this.myPlayerIndex = me.index;
+  }
 
   isMyTurn() {
     return this.gameState &&
