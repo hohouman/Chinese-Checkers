@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星陨跳棋 - 改版策略对战</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟</text></svg>">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 首页/大厅 -->
+    <div id="lobby-screen" class="screen active">
+      <div class="lobby-container">
+        <div class="logo-section">
+          <h1 class="game-title">星陨跳棋</h1>
+          <p class="subtitle">策略 · 地形 · 技能 · 对战</p>
+        </div>
+
+        <!-- 玩家信息 -->
+        <div id="player-setup" class="card">
+          <h3>👤 玩家设置</h3>
+          <div class="form-row">
+            <input type="text" id="player-name" placeholder="输入你的昵称" maxlength="12" value="">
+            <button id="btn-save-name" class="btn btn-sm">确认</button>
+          </div>
+          <div id="player-info" class="hidden">
+            <span id="display-name"></span>
+            <span id="display-rating" class="badge">积分: 1000</span>
+          </div>
+        </div>
+
+        <!-- 游戏模式选择 -->
+        <div class="card">
+          <h3>🎮 游戏模式</h3>
+          <div class="mode-grid">
+            <div class="mode-card selected" data-mode="classic">
+              <div class="mode-icon">🏁</div>
+              <div class="mode-name">经典模式</div>
+              <div class="mode-desc">全部棋子到达对面区域</div>
+            </div>
+            <div class="mode-card" data-mode="points">
+              <div class="mode-icon">💎</div>
+              <div class="mode-name">积分模式</div>
+              <div class="mode-desc">占领资源地块获取积分</div>
+            </div>
+            <div class="mode-card" data-mode="survival">
+              <div class="mode-icon">⚔️</div>
+              <div class="mode-name">生存模式</div>
+              <div class="mode-desc">击败敌方棋子存活到最后</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 游戏创建 -->
+        <div class="card">
+          <h3>🚀 开始游戏</h3>
+          <div class="option-row">
+            <label>玩家人数</label>
+            <div class="btn-group">
+              <button class="btn btn-sm player-count-btn selected" data-count="2">2人</button>
+              <button class="btn btn-sm player-count-btn" data-count="3">3人</button>
+              <button class="btn btn-sm player-count-btn" data-count="4">4人</button>
+              <button class="btn btn-sm player-count-btn" data-count="6">6人</button>
+            </div>
+          </div>
+
+          <div class="option-row">
+            <label>游戏选项</label>
+            <div class="checkboxes">
+              <label><input type="checkbox" id="opt-terrain" checked> 动态地形</label>
+              <label><input type="checkbox" id="opt-events" checked> 随机事件</label>
+              <label><input type="checkbox" id="opt-abilities" checked> 棋子技能</label>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="btn-create-pve" class="btn btn-primary btn-lg">
+              🤖 人机对战
+            </button>
+            <button id="btn-create-pvp" class="btn btn-accent btn-lg">
+              🌐 在线对战
+            </button>
+          </div>
+
+          <div class="divider"><span>或</span></div>
+
+          <div class="form-row">
+            <input type="text" id="room-code" placeholder="输入房间号" maxlength="8">
+            <button id="btn-join-room" class="btn btn-secondary">加入房间</button>
+          </div>
+        </div>
+
+        <!-- 排行榜 -->
+        <div class="card collapsible">
+          <h3 class="toggle-header">🏆 排行榜 <span class="arrow">▼</span></h3>
+          <div class="toggle-content hidden">
+            <table id="leaderboard-table">
+              <thead><tr><th>#</th><th>玩家</th><th>积分</th><th>胜率</th></tr></thead>
+              <tbody id="leaderboard-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 等候室 -->
+    <div id="room-screen" class="screen">
+      <div class="room-container">
+        <div class="room-header">
+          <button id="btn-leave-room" class="btn btn-sm">← 返回</button>
+          <h2>房间 <span id="room-id-display"></span></h2>
+          <button id="btn-copy-room" class="btn btn-sm">📋 复制房号</button>
+        </div>
+
+        <div class="room-info">
+          <span id="room-mode-display" class="badge"></span>
+          <span id="room-count-display" class="badge"></span>
+        </div>
+
+        <div id="player-slots" class="player-slots"></div>
+
+        <div class="room-actions">
+          <button id="btn-ready" class="btn btn-primary btn-lg">准备就绪</button>
+          <button id="btn-add-ai" class="btn btn-secondary">+ 添加AI</button>
+          <button id="btn-start-game" class="btn btn-accent btn-lg hidden">开始游戏</button>
+        </div>
+
+        <div id="room-chat" class="chat-box">
+          <div id="chat-messages" class="chat-messages"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="发送消息..." maxlength="200">
+            <button id="btn-send-chat" class="btn btn-sm">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="screen">
+      <div class="game-layout">
+        <!-- 左侧面板 -->
+        <div class="game-sidebar left-sidebar">
+          <div id="turn-info" class="turn-info">
+            <div class="turn-number">回合 <span id="turn-num">1</span></div>
+            <div id="current-player-display" class="current-player">等待中...</div>
+          </div>
+
+          <div id="players-panel" class="players-panel"></div>
+
+          <div id="event-log" class="event-log">
+            <h4>📜 事件日志</h4>
+            <div id="event-list" class="event-list"></div>
+          </div>
+        </div>
+
+        <!-- 中央棋盘 -->
+        <div class="game-center">
+          <canvas id="game-canvas"></canvas>
+          <div id="game-hud" class="game-hud">
+            <div id="selected-piece-info" class="piece-info hidden"></div>
+          </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="game-sidebar right-sidebar">
+          <div id="piece-types-panel" class="card">
+            <h4>棋子图鉴</h4>
+            <div id="piece-legend" class="piece-legend"></div>
+          </div>
+
+          <div id="terrain-panel" class="card">
+            <h4>地形图例</h4>
+            <div id="terrain-legend" class="terrain-legend"></div>
+          </div>
+
+          <div id="ability-panel" class="card hidden">
+            <h4>🔮 法师能力</h4>
+            <div class="ability-options">
+              <button class="btn btn-sm ability-btn" data-terrain="speed">加速带</button>
+              <button class="btn btn-sm ability-btn" data-terrain="ice">冰面</button>
+              <button class="btn btn-sm ability-btn" data-terrain="obstacle">障碍物</button>
+            </div>
+          </div>
+
+          <div class="game-actions">
+            <button id="btn-end-turn" class="btn btn-primary hidden">结束回合</button>
+            <button id="btn-surrender" class="btn btn-danger btn-sm">投降</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏结束遮罩 -->
+    <div id="game-over-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="game-over-title">游戏结束</h2>
+        <div id="game-over-body"></div>
+        <div class="modal-actions">
+          <button id="btn-back-lobby" class="btn btn-primary btn-lg">返回大厅</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 事件弹窗 -->
+    <div id="event-popup" class="event-popup hidden">
+      <div class="event-popup-content">
+        <div id="event-popup-icon" class="event-icon"></div>
+        <div id="event-popup-text" class="event-text"></div>
+      </div>
+    </div>
+
+    <!-- 通知 -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script src="/js/network.js"></script>
+  <script src="/js/renderer.js"></script>
+  <script src="/js/game.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+name: Build Chinese-Checkers Worker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build _worker.js
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build _worker.js
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          ls -lh public/_worker.js
+          echo "Build size: $(wc -c < public/_worker.js) bytes"
+
+      - name: Commit _worker.js
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/_worker.js
+          git diff --cached --quiet && echo "No changes to commit" || (
+            git commit -m "build: update _worker.js [skip ci]"
+            git push
+          )

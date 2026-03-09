@@ -1,0 +1,33 @@
+name = "chinese-checkers-online"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# 静态资源
+assets = { directory = "./public" }
+
+# D1 数据库
+[[d1_databases]]
+binding = "DB"
+database_name = "chinese-checkers-db"
+database_id = "0c40f0ee-e384-4fdd-908d-0679217ddce6"
+
+# KV 命名空间 (会话管理/匹配队列)
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "24147cbe36b44550a56d4674fff8c2d0"
+
+# R2 存储 (地图数据/游戏回放)
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "chinese-checkers-storage"
+
+# Durable Objects (游戏房间 WebSocket)
+[durable_objects]
+bindings = [
+  { name = "GAME_ROOM", class_name = "GameRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]

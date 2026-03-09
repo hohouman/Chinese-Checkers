@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+
+# Build output
+public/_worker.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Env
+.env
+.env.local
+.dev.vars
+
+# Logs
+*.log
+npm-debug.log*
