@@ -24,7 +24,7 @@ class BoardRenderer {
       { color: '#1abc9c', fill: '#0e6655', border: '#1abc9c', label: '①' },
       { color: '#e74c3c', fill: '#78281f', border: '#e74c3c', label: '②' },
       { color: '#f39c12', fill: '#7d6608', border: '#f39c12', label: '③' },
-      { color: '#3498db', fill: '#1a5276', border: '#3498db', label: '④' },
+      { color: '#9b59b6', fill: '#4a235a', border: '#9b59b6', label: '④' },
     ];
     this.teleporterPairMap = {}; // cellKey → pairIndex
 
