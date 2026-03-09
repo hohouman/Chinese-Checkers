@@ -17,6 +17,11 @@ import { shouldTriggerEvent, generateRandomEvent, executeEvent } from './game/ev
 import { GAME_MODES, setupResourceCells, calculateTurnScores, checkVictory, getGameRanking } from './game/modes.js';
 import { getAIMove, getAIMageAction } from './game/ai.js';
 
+// 清理超时常量
+const CLEANUP_AFTER_GAME_OVER = 10 * 60 * 1000;   // 游戏结束10分钟后清理
+const CLEANUP_AFTER_ALL_LEFT = 30 * 60 * 1000;    // 所有人断连30分钟后清理
+const CLEANUP_IDLE_ROOM = 2 * 60 * 60 * 1000;     // 空闲房间2小时后清理
+
 export class GameRoom {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -131,6 +136,86 @@ export class GameRoom {
         await this.saveGameState(gs);
         this.broadcast({ type: 'playerDisconnected', playerId, name: player.name });
       }
+
+      // 如果所有真人玩家都断连，设置延迟清理 alarm
+      const humanPlayers = gs.players.filter(p => !p.isAI);
+      const allDisconnected = humanPlayers.length > 0 && humanPlayers.every(p => !p.connected);
+      if (allDisconnected) {
+        await this.scheduleCleanup(CLEANUP_AFTER_ALL_LEFT);
+      }
+    }
+  }
+
+  /**
+   * alarm() - Cloudflare DO 定时器回调，用于自动清理过期房间数据
+   */
+  async alarm() {
+    const gs = await this.getGameState();
+    if (!gs) {
+      // 没有游戏状态，直接清理
+      await this.storage.deleteAll();
+      return;
+    }
+
+    // 如果游戏已结束，直接清理
+    if (gs.status === 'finished') {
+      console.log(`[Cleanup] Room ${gs.roomId}: game finished, cleaning up`);
+      await this.removeFromActiveRooms(gs.roomId);
+      await this.storage.deleteAll();
+      return;
+    }
+
+    // 如果所有真人玩家仍然断连，清理
+    const humanPlayers = gs.players.filter(p => !p.isAI);
+    const allDisconnected = humanPlayers.length === 0 || humanPlayers.every(p => !p.connected);
+    if (allDisconnected) {
+      console.log(`[Cleanup] Room ${gs.roomId}: all players disconnected, cleaning up`);
+      await this.removeFromActiveRooms(gs.roomId);
+      await this.storage.deleteAll();
+      return;
+    }
+
+    // 检查房间是否超长时间空闲（创建后从未开始游戏）
+    if (gs.status === 'waiting' && Date.now() - gs.createdAt > CLEANUP_IDLE_ROOM) {
+      console.log(`[Cleanup] Room ${gs.roomId}: idle too long, cleaning up`);
+      // 通知仍在连接的玩家
+      this.broadcast({ type: 'error', message: '房间因长时间未开始已被清理' });
+      const sockets = this.ctx.getWebSockets();
+      for (const ws of sockets) {
+        try { ws.close(1000, 'Room expired'); } catch (e) { /* ignore */ }
+      }
+      await this.removeFromActiveRooms(gs.roomId);
+      await this.storage.deleteAll();
+      return;
+    }
+  }
+
+  /**
+   * 设置清理 alarm（如果当前没有更早的 alarm）
+   */
+  async scheduleCleanup(delayMs) {
+    const existing = await this.storage.getAlarm();
+    const newTime = Date.now() + delayMs;
+    // 只在没有 alarm 或新的更早时设置
+    if (!existing || newTime < existing) {
+      await this.storage.setAlarm(newTime);
+    }
+  }
+
+  /**
+   * 从 KV 活跃房间列表中移除指定房间
+   */
+  async removeFromActiveRooms(roomId) {
+    try {
+      const kv = this.env.SESSIONS;
+      if (!kv) return;
+      const rooms = await kv.get('rooms:active', 'json') || [];
+      const updated = rooms.filter(r => r.id !== roomId);
+      if (updated.length !== rooms.length) {
+        await kv.put('rooms:active', JSON.stringify(updated), { expirationTtl: 3600 });
+      }
+    } catch (e) {
+      console.error('Failed to remove room from active list:', e);
     }
   }
 
@@ -174,6 +259,10 @@ export class GameRoom {
     });
 
     await this.saveGameState(gs);
+
+    // 设置空闲房间超时清理（若一直未开始游戏）
+    await this.scheduleCleanup(CLEANUP_IDLE_ROOM);
+
     this.broadcast({
       type: 'gameCreated',
       state: this.sanitizeState(gs),
@@ -467,6 +556,9 @@ export class GameRoom {
 
       // 保存到D1
       await this.saveGameResult(gs, ranking);
+
+      // 设置游戏结束后的延迟清理
+      await this.scheduleCleanup(CLEANUP_AFTER_GAME_OVER);
       return;
     }
 

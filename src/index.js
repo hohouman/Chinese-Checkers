@@ -6,6 +6,11 @@
 export { GameRoom } from './game-room.js';
 
 export default {
+  // Cron Trigger：定期清理旧数据（需在 wrangler.toml 配置）
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(handleDataCleanup(env));
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -46,6 +51,11 @@ export default {
       // 排行榜
       if (path === '/api/leaderboard') {
         return cors(await handleLeaderboard(env));
+      }
+
+      // 数据清理（由 cron trigger 或手动调用）
+      if (path === '/api/admin/cleanup' && request.method === 'POST') {
+        return cors(await handleDataCleanup(env));
       }
 
       // 游戏历史
@@ -151,9 +161,15 @@ async function handleMatchmaking(request, env) {
 }
 
 async function handleListRooms(env) {
-  // 从KV获取活跃房间列表
+  // 从KV获取活跃房间列表，过滤掉超过2小时的过时条目
   const list = await env.SESSIONS.get('rooms:active', 'json') || [];
-  return Response.json({ rooms: list });
+  const now = Date.now();
+  const fresh = list.filter(r => now - r.createdAt < 2 * 60 * 60 * 1000);
+  // 如果有过时条目被清理，写回KV
+  if (fresh.length !== list.length) {
+    await env.SESSIONS.put('rooms:active', JSON.stringify(fresh), { expirationTtl: 3600 });
+  }
+  return Response.json({ rooms: fresh });
 }
 
 async function handleCreateRoom(request, env) {
@@ -203,6 +219,45 @@ async function handleGameHistory(playerId, env) {
     return Response.json({ history: results || [] });
   } catch (e) {
     return Response.json({ history: [] });
+  }
+}
+
+async function handleDataCleanup(env) {
+  const results = { games: 0, gamePlayers: 0, inactivePlayers: 0 };
+  try {
+    const db = env.DB;
+    if (!db) return Response.json({ error: 'DB not available' }, { status: 503 });
+
+    // 清理90天前的对局记录
+    const r1 = await db.prepare(
+      `DELETE FROM game_moves WHERE game_id IN (
+        SELECT id FROM games WHERE finished_at < datetime('now', '-90 days')
+      )`
+    ).run();
+
+    const r2 = await db.prepare(
+      `DELETE FROM game_players WHERE game_id IN (
+        SELECT id FROM games WHERE finished_at < datetime('now', '-90 days')
+      )`
+    ).run();
+    results.gamePlayers = r2.meta?.changes || 0;
+
+    const r3 = await db.prepare(
+      `DELETE FROM games WHERE finished_at < datetime('now', '-90 days')`
+    ).run();
+    results.games = r3.meta?.changes || 0;
+
+    // 清理180天未活跃且无对局记录的玩家
+    const r4 = await db.prepare(
+      `DELETE FROM players WHERE last_seen < datetime('now', '-180 days')
+       AND games_played = 0`
+    ).run();
+    results.inactivePlayers = r4.meta?.changes || 0;
+
+    return Response.json({ success: true, cleaned: results });
+  } catch (e) {
+    console.error('Cleanup error:', e);
+    return Response.json({ error: e.message, partial: results }, { status: 500 });
   }
 }
 

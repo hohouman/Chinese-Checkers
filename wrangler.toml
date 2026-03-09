@@ -31,3 +31,7 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
+# Cron Trigger: 每天凌晨3点清理过期数据
+[triggers]
+crons = ["0 3 * * *"]
