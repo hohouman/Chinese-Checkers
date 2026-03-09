@@ -944,9 +944,12 @@ class GameClient {
       const alivePieces = state.pieces?.filter(pc => pc.player === p.index && pc.active).length || 0;
       const score = state.scores?.[p.index] || 0;
 
+      const aiLevelNames = { easy: '简单', medium: '中等', hard: '困难' };
+      const aiTag = p.isAI ? `🤖<span style="font-size:10px;opacity:0.7">${aiLevelNames[p.aiLevel] || ''}</span>` : '';
+
       return `<div class="player-row ${isActive ? 'active-turn' : ''}">
         <span class="player-dot" style="background:${colors[p.index] || '#888'}"></span>
-        <span class="player-name">${p.name} ${p.isAI ? '🤖' : ''} ${p.id === this.playerId ? '(你)' : ''}</span>
+        <span class="player-name">${p.name} ${aiTag} ${p.id === this.playerId ? '(你)' : ''}</span>
         <span class="player-pieces">${alivePieces}棋</span>
         ${state.mode === 'points' ? `<span class="player-score">${score}分</span>` : ''}
       </div>`;
