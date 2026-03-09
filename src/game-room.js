@@ -185,13 +185,20 @@ export class GameRoom {
     if (!gs) return this.sendTo(playerId, { type: 'error', message: '房间不存在' });
     if (gs.status !== 'waiting') return this.sendTo(playerId, { type: 'error', message: '游戏已开始' });
 
-    // 检查是否已加入
-    const existing = gs.players.find(p => p.id === playerId);
-    if (existing) {
-      existing.connected = true;
-      await this.saveGameState(gs);
-      this.sendTo(playerId, { type: 'gameState', state: this.sanitizeState(gs), yourId: playerId });
-      return;
+    const { playerName = '玩家', isAI = false, aiLevel = 'medium' } = data;
+
+    // AI 玩家使用独立生成的 ID，真人玩家使用 WebSocket 关联的 playerId
+    const joinId = isAI ? `ai-${crypto.randomUUID()}` : playerId;
+
+    // 检查是否已加入（仅对真人玩家检查）
+    if (!isAI) {
+      const existing = gs.players.find(p => p.id === playerId);
+      if (existing) {
+        existing.connected = true;
+        await this.saveGameState(gs);
+        this.sendTo(playerId, { type: 'gameState', state: this.sanitizeState(gs), yourId: playerId });
+        return;
+      }
     }
 
     const positions = PLAYER_POSITIONS[gs.playerCount] || PLAYER_POSITIONS[2];
@@ -202,9 +209,8 @@ export class GameRoom {
       return this.sendTo(playerId, { type: 'error', message: '房间已满' });
     }
 
-    const { playerName = '玩家', isAI = false, aiLevel = 'medium' } = data;
     gs.players.push({
-      id: playerId,
+      id: joinId,
       name: playerName,
       index: nextIndex,
       color: PLAYER_COLORS[nextIndex],
@@ -218,7 +224,7 @@ export class GameRoom {
     await this.saveGameState(gs);
     this.broadcast({
       type: 'playerJoined',
-      player: { id: playerId, name: playerName, index: nextIndex, isAI },
+      player: { id: joinId, name: playerName, index: nextIndex, isAI },
       state: this.sanitizeState(gs),
     });
   }
