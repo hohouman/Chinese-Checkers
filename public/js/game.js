@@ -83,7 +83,82 @@ class GameClient {
     const terrainLegend = document.getElementById('terrain-legend');
     if (terrainLegend) {
       terrainLegend.innerHTML = '';
+      // 传送阵配对样式（与 renderer 一致）
+      const teleporterPairStyles = [
+        { color: '#1abc9c', fill: '#0e6655', border: '#1abc9c', label: '①' },
+        { color: '#e74c3c', fill: '#78281f', border: '#e74c3c', label: '②' },
+        { color: '#f39c12', fill: '#7d6608', border: '#f39c12', label: '③' },
+        { color: '#3498db', fill: '#1a5276', border: '#3498db', label: '④' },
+      ];
+
       for (const [type, info] of Object.entries(this.terrainTypes)) {
+        // 传送阵展示所有配对颜色
+        if (type === 'teleporter') {
+          for (let pi = 0; pi < teleporterPairStyles.length; pi++) {
+            const ps = teleporterPairStyles[pi];
+            const item = document.createElement('div');
+            item.className = 'legend-item terrain-legend-item';
+
+            const cvs = document.createElement('canvas');
+            const dpr = window.devicePixelRatio || 1;
+            const displaySize = 34;
+            cvs.width = displaySize * dpr;
+            cvs.height = displaySize * dpr;
+            cvs.style.width = displaySize + 'px';
+            cvs.style.height = displaySize + 'px';
+            cvs.className = 'terrain-preview';
+            const ctx = cvs.getContext('2d');
+            ctx.scale(dpr, dpr);
+            const cx = displaySize / 2, cy = displaySize / 2, hexR = 14;
+
+            // 六边形 - 使用配对颜色
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = Math.PI / 180 * (60 * i - 30);
+              const hx = cx + hexR * Math.cos(angle);
+              const hy = cy + hexR * Math.sin(angle);
+              if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.fillStyle = ps.fill;
+            ctx.fill();
+            ctx.strokeStyle = ps.border;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 配对圆环 + 标签
+            ctx.save();
+            ctx.strokeStyle = ps.color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.arc(cx, cy, hexR * 0.35, 0, Math.PI * 1.5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, hexR * 0.55, Math.PI * 0.5, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = ps.color;
+            ctx.font = `bold ${hexR * 0.6}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ps.label, cx, cy);
+            ctx.restore();
+
+            item.appendChild(cvs);
+
+            const textEl = document.createElement('div');
+            textEl.className = 'terrain-legend-text';
+            const pairName = `传送阵 ${ps.label}`;
+            textEl.innerHTML = `<span class="terrain-legend-name">${pairName}</span>`
+              + `<span class="terrain-legend-desc">${info.desc}</span>`;
+            item.appendChild(textEl);
+
+            terrainLegend.appendChild(item);
+          }
+          continue;
+        }
+
         const item = document.createElement('div');
         item.className = 'legend-item terrain-legend-item';
 
