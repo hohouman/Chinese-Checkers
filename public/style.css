@@ -309,6 +309,25 @@ th { color: var(--text-dim); font-weight: 500; }
   gap: 10px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  align-items: center;
+}
+.add-ai-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.select-sm {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.select-sm:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .chat-box {

@@ -166,18 +166,18 @@ export function pixelToCube(px, py, size) {
  * 计算从目标区中心到某点的距离 (用于评估进度)
  */
 export function distanceToTarget(q, r, playerIndex) {
-  // 每个目标区中心的近似坐标
-  const targetCenters = [
-    { q: 0, r: -6 },  // home_0 arm → target=home_3 center
-    { q: 6, r: -3 },  // home_1 → home_4
-    { q: 3, r: 3 },   // home_2 → home_5 — actually need to recalculate
-    { q: 0, r: 6 },   // home_3 → home_0
-    { q: -6, r: 3 },  // home_4 → home_1
-    { q: -3, r: -3 }, // home_5 → home_2
+  // 每个母区(home zone)的中心坐标（由实际棋盘格子计算得出）
+  const zoneCenters = [
+    { q: -3, r: -3 },  // home_0 中心
+    { q: -6, r: 3 },   // home_1 中心
+    { q: -3, r: 6 },   // home_2 中心
+    { q: 3, r: 3 },    // home_3 中心
+    { q: 6, r: -3 },   // home_4 中心
+    { q: 3, r: -6 },   // home_5 中心
   ];
-  // Target zone is the opposite arm
+  // 目标区 = 对面的边
   const targetIdx = (playerIndex + 3) % 6;
-  const tc = targetCenters[targetIdx];
+  const tc = zoneCenters[targetIdx];
   return hexDistance(q, r, tc.q, tc.r);
 }
 

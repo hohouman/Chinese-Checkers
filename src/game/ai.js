@@ -122,23 +122,43 @@ function evaluateMove(moveData, board, pieces, playerIndex, gameMode) {
  */
 function evaluateClassicMove(piece, move, board, playerIndex) {
   const targetZone = getTargetZone(playerIndex);
+  const homeZone = `home_${playerIndex}`;
   const toCell = board[move.to];
+  const fromKey = cellKey(piece.q, piece.r);
+  const fromCell = board[fromKey];
 
   // 计算前后到目标区域中心的距离变化
   const targetCenter = getTargetCenter(playerIndex);
   const distBefore = hexDistance(piece.q, piece.r, targetCenter.q, targetCenter.r);
   const distAfter = hexDistance(move.toQ, move.toR, targetCenter.q, targetCenter.r);
-  let score = (distBefore - distAfter) * 10;
+  let score = (distBefore - distAfter) * 12;
 
-  // 已经在目标区域的棋子不动加分
+  // 已经进入目标区域的棋子大加分
   if (toCell && toCell.zone === targetZone) {
-    score += 15;
+    score += 25;
+    // 如果棋子已在目标区，不要移出去
+    if (fromCell && fromCell.zone === targetZone) {
+      // 在目标区内部移动，只应浅加分
+      score = 3;
+    }
+  } else if (fromCell && fromCell.zone === targetZone) {
+    // 从目标区移出去 = 重罚
+    score -= 40;
   }
 
-  // 避免留在母区不动（除非那就是目标区）
-  const fromCell = board[cellKey(piece.q, piece.r)];
-  if (fromCell && fromCell.zone === `home_${playerIndex}`) {
-    score += 5; // 鼓励离开母区
+  // 鼓励离开母区
+  if (fromCell && fromCell.zone === homeZone) {
+    score += 8;
+  }
+
+  // 惩罚往回走（距离变大）
+  if (distAfter > distBefore) {
+    score -= 5;
+  }
+
+  // 跳跃类型加分（跳跃通常移动更远）
+  if (move.type === 'hop') {
+    score += 4;
   }
 
   return score;
@@ -223,21 +243,36 @@ function evaluateSurvivalMove(piece, move, board, pieces, playerIndex) {
 function evaluateMoveDeep(moveData, board, pieces, playerIndex, gameMode, config) {
   let score = evaluateMove(moveData, board, pieces, playerIndex, gameMode);
 
-  // 模拟执行移动后的局面
   const { piece, move } = moveData;
-  const fromKey = cellKey(piece.q, piece.r);
+
+  // 经典模式特殊优化
+  if (gameMode === 'classic') {
+    const targetZone = getTargetZone(playerIndex);
+    const toCell = board[move.to];
+    const fromCell = board[cellKey(piece.q, piece.r)];
+
+    // 优先处理“快达到目标区”的棋子
+    const targetCenter = getTargetCenter(playerIndex);
+    const distAfter = hexDistance(move.toQ, move.toR, targetCenter.q, targetCenter.r);
+    if (distAfter <= 3) score += 8; // 快进入目标区了，优先
+    if (toCell && toCell.zone === targetZone) score += 12; // 在目标区
+
+    // 如果还在母区，更急迫地出去
+    if (fromCell && fromCell.zone === `home_${playerIndex}`) {
+      score += 6;
+    }
+  }
 
   // 位置优势：靠近中心但不太靠近
   const distFromCenter = hexDistance(move.toQ, move.toR, 0, 0);
   if (distFromCenter <= 4) {
-    score += 2; // 中心位置更灵活
+    score += 2;
   }
 
-  // 机动性评估：目标位置邻居空格多=机动性好
+  // 机动性评估
   const mobility = countEmptyNeighbors(board, move.toQ, move.toR);
   score += mobility;
 
-  // 避免被包围
   if (mobility === 0 && move.type !== 'hop') {
     score -= 10;
   }
@@ -247,17 +282,21 @@ function evaluateMoveDeep(moveData, board, pieces, playerIndex, gameMode, config
 
 /**
  * 获取目标区域中心坐标
+ * 索引对应每个 home zone 的中心，玩家的目标是对面的边
  */
 function getTargetCenter(playerIndex) {
-  const centers = [
-    { q: 2, r: -6 }, // target for player 0 → home_3 area
-    { q: 6, r: -2 }, // target for player 1 → home_4
-    { q: 2, r: 4 },  // target for player 2 → home_5
-    { q: -2, r: 6 }, // target for player 3 → home_0
-    { q: -6, r: 2 }, // target for player 4 → home_1
-    { q: -2, r: -4 },// target for player 5 → home_2
+  // 每个母区的中心坐标（由实际棋盘格子计算得出）
+  const zoneCenters = [
+    { q: -3, r: -3 },  // home_0 中心
+    { q: -6, r: 3 },   // home_1 中心
+    { q: -3, r: 6 },   // home_2 中心
+    { q: 3, r: 3 },    // home_3 中心
+    { q: 6, r: -3 },   // home_4 中心
+    { q: 3, r: -6 },   // home_5 中心
   ];
-  return centers[playerIndex] || { q: 0, r: 0 };
+  // 目标区 = 对面的边
+  const targetIdx = (playerIndex + 3) % 6;
+  return zoneCenters[targetIdx];
 }
 
 function countThreats(board, pieces, q, r, myPlayer) {

@@ -10,6 +10,7 @@
   let playerName = localStorage.getItem('playerName') || '';
   let selectedMode = 'classic';
   let selectedPlayerCount = 2;
+  let selectedAILevel = 'medium';
   let roomId = null;
 
   const network = new NetworkClient();
@@ -56,6 +57,15 @@
         document.querySelectorAll('.player-count-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         selectedPlayerCount = parseInt(btn.dataset.count);
+      });
+    });
+
+    // AI难度选择
+    document.querySelectorAll('.ai-level-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.ai-level-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedAILevel = btn.dataset.level;
       });
     });
 
@@ -150,7 +160,7 @@
             type: 'joinGame',
             playerName: `AI-${i}`,
             isAI: true,
-            aiLevel: i <= 1 ? 'medium' : 'hard',
+            aiLevel: selectedAILevel,
           });
         }
 
@@ -301,11 +311,13 @@
     });
 
     document.getElementById('btn-add-ai').addEventListener('click', () => {
+      const aiLevel = document.getElementById('room-ai-level')?.value || 'medium';
+      const levelNames = { easy: '简单', medium: '中等', hard: '困难' };
       network.send({
         type: 'joinGame',
-        playerName: `AI-${Date.now() % 100}`,
+        playerName: `AI(${levelNames[aiLevel] || '中等'})`,
         isAI: true,
-        aiLevel: 'medium',
+        aiLevel: aiLevel,
       });
     });
 
